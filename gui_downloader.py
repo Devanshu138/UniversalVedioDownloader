@@ -60,12 +60,16 @@ class DownloaderApp(ctk.CTk):
         self.is_paused = False        # Pause state flag
         self.is_stopped = False       # Stop state flag
         self._gradient_offset = 0     # For animation
+        self._resize_timer = None     # For debounced resize
+
+        # Set base colors to match gradient (prevents black flash on resize)
+        self.configure(fg_color="#1e2032")
 
         # ── Animated gradient background ────────────────────────
-        self.bg_canvas = tk.Canvas(self, highlightthickness=0, bd=0)
+        self.bg_canvas = tk.Canvas(self, highlightthickness=0, bd=0, bg="#1e2032")
         self.bg_canvas.place(x=0, y=0, relwidth=1, relheight=1)
         self._draw_gradient()
-        self.bg_canvas.bind("<Configure>", lambda e: self._draw_gradient())
+        self.bg_canvas.bind("<Configure>", self._on_resize)
         self._animate_gradient()
 
         # ── Main content frame (sits on top of gradient) ────────
@@ -207,6 +211,12 @@ class DownloaderApp(ctk.CTk):
             y0 = int(h * i / steps)
             y1 = int(h * (i + 1) / steps) + 1
             self.bg_canvas.create_rectangle(0, y0, w, y1, fill=color, outline=color, tags="gradient")
+
+    def _on_resize(self, event=None):
+        """Debounced resize: only redraw gradient after resize stops (smooth maximize)."""
+        if self._resize_timer:
+            self.after_cancel(self._resize_timer)
+        self._resize_timer = self.after(30, self._draw_gradient)
 
     def _animate_gradient(self):
         """Slowly shift the gradient colors over time."""
