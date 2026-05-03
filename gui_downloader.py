@@ -88,7 +88,7 @@ class DownloaderApp(ctk.CTk):
         self.download_btn = ctk.CTkButton(self.input_frame, text="⬇ Download", height=48, corner_radius=12, command=self.start_download, fg_color="#EF233C", hover_color="#D90429", font=ctk.CTkFont(size=14, weight="bold"))
         self.download_btn.grid(row=0, column=1, padx=(0, 5), pady=15)
 
-        self.pause_btn = ctk.CTkButton(self.input_frame, text="⏸ Pause", height=48, width=105, corner_radius=12, command=self.toggle_pause, fg_color="#f59e0b", hover_color="#d97706", text_color="#ffffff", font=ctk.CTkFont(size=13, weight="bold"), state="disabled")
+        self.pause_btn = ctk.CTkButton(self.input_frame, text="⏸ Pause", height=48, width=105, corner_radius=12, command=self.toggle_pause, fg_color="#f59e0b", hover_color="#d97706", text_color="#1a1a2e", font=ctk.CTkFont(size=14, weight="bold"), state="disabled")
         self.pause_btn.grid(row=0, column=2, padx=(0, 5), pady=15)
 
         self.stop_btn = ctk.CTkButton(self.input_frame, text="⏹ Stop", height=48, width=105, corner_radius=12, command=self.stop_download, fg_color="#D90429", hover_color="#a80320", font=ctk.CTkFont(size=13, weight="bold"), state="disabled")
