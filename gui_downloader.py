@@ -11,7 +11,7 @@ import psutil
 import math
 
 ctk.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
-ctk.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
+ctk.set_default_color_theme("green")  # Themes: "blue" (standard), "green", "dark-blue"
 
 # yt-dlp uses --continue by default, so partial .part files are auto-resumed.
 # We add --retries and --fragment-retries for network resilience.
@@ -353,9 +353,22 @@ class DownloaderApp(ctk.CTk):
 
     # ── Download logic ──────────────────────────────────────────
 
+    @staticmethod
+    def _is_youtube(url):
+        """Check if the URL belongs to YouTube."""
+        yt_patterns = ["youtube.com", "youtu.be", "youtube-nocookie.com"]
+        return any(p in url.lower() for p in yt_patterns)
+
     def download_process(self, url):
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         success_overall = False
+
+        # Pick output folder based on URL
+        if self._is_youtube(url):
+            folder = os.path.join(os.getcwd(), "YouTube Videos")
+        else:
+            folder = os.path.join(os.getcwd(), "Others")
+        os.makedirs(folder, exist_ok=True)
         
         for downloader in DOWNLOADERS:
             if self.is_stopped:
@@ -369,6 +382,13 @@ class DownloaderApp(ctk.CTk):
                 continue
 
             cmd = [arg.replace("{url}", url).replace("{timestamp}", timestamp) for arg in downloader["command"]]
+
+            # Replace the output filename with the correct folder path
+            for i, arg in enumerate(cmd):
+                if "%(title)s_" in arg:
+                    cmd[i] = os.path.join(folder, arg)
+                elif arg.startswith("video_"):
+                    cmd[i] = os.path.join(folder, arg)
             
             try:
                 # hide console window on windows
@@ -392,7 +412,8 @@ class DownloaderApp(ctk.CTk):
                     break
 
                 if process.returncode == 0:
-                    self.after(0, self.update_status, f"Success! Video downloaded with {downloader['name']}.", "#10b981")
+                    folder_name = "YouTube Videos" if self._is_youtube(url) else "Others"
+                    self.after(0, self.update_status, f"Saved to '{folder_name}' folder ✓", "#10b981")
                     self.after(0, lambda: self.progress_bar.set(1.0))
                     self.after(0, lambda: self.pct_label.configure(text="100%"))
                     self.after(0, lambda: self.speed_label.configure(text="Speed: Done"))
