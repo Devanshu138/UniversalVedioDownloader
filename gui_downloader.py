@@ -3,6 +3,7 @@ import subprocess
 import threading
 import sys
 import os
+import time
 
 ctk.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
 ctk.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
@@ -10,17 +11,17 @@ ctk.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark
 DOWNLOADERS = [
     {
         "name": "yt-dlp",
-        "command": [sys.executable, "-m", "yt_dlp", "--no-warnings", "{url}"],
+        "command": [sys.executable, "-m", "yt_dlp", "--no-warnings", "-o", "%(title)s_{timestamp}.%(ext)s", "{url}"],
         "check": [sys.executable, "-m", "yt_dlp", "--version"]
     },
     {
         "name": "you-get",
-        "command": [sys.executable, "-m", "you_get", "{url}"],
+        "command": [sys.executable, "-m", "you_get", "-O", "video_{timestamp}", "{url}"],
         "check": [sys.executable, "-m", "you_get", "--version"]
     },
     {
         "name": "streamlink",
-        "command": [sys.executable, "-m", "streamlink", "{url}", "best", "-o", "downloaded_video.mp4"],
+        "command": [sys.executable, "-m", "streamlink", "{url}", "best", "-o", "video_{timestamp}.mp4"],
         "check": [sys.executable, "-m", "streamlink", "--version"]
     }
 ]
@@ -127,6 +128,7 @@ class DownloaderApp(ctk.CTk):
     def download_process(self, url):
         self.log(f"[*] Starting universal video downloader for: {url}\n")
         
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
         success_overall = False
         
         for downloader in DOWNLOADERS:
@@ -140,7 +142,7 @@ class DownloaderApp(ctk.CTk):
                 self.log(f"[-] {downloader['name']} is not installed. Skipping.\n")
                 continue
 
-            cmd = [arg.replace("{url}", url) for arg in downloader["command"]]
+            cmd = [arg.replace("{url}", url).replace("{timestamp}", timestamp) for arg in downloader["command"]]
             
             try:
                 # hide console window on windows

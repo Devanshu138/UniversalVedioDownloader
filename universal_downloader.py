@@ -1,23 +1,24 @@
 import subprocess
 import sys
 import os
+import time
 
 # We define a list of downloaders. They will be tried in order.
 # Using 'python -m' ensures they run even if they aren't in the system PATH.
 DOWNLOADERS = [
     {
         "name": "yt-dlp (The Best Overall)",
-        "command": ["python", "-m", "yt_dlp", "--no-warnings", "{url}"],
+        "command": ["python", "-m", "yt_dlp", "--no-warnings", "-o", "%(title)s_{timestamp}.%(ext)s", "{url}"],
         "check": ["python", "-m", "yt_dlp", "--version"]
     },
     {
         "name": "you-get (Great for Asian & general sites)",
-        "command": ["python", "-m", "you_get", "{url}"],
+        "command": ["python", "-m", "you_get", "-O", "video_{timestamp}", "{url}"],
         "check": ["python", "-m", "you_get", "--version"]
     },
     {
         "name": "streamlink (Great for live streams & VODs)",
-        "command": ["python", "-m", "streamlink", "{url}", "best", "-o", "downloaded_video.mp4"],
+        "command": ["python", "-m", "streamlink", "{url}", "best", "-o", "video_{timestamp}.mp4"],
         "check": ["python", "-m", "streamlink", "--version"]
     }
 ]
@@ -34,8 +35,9 @@ def run_downloader(downloader, url):
         print(f"[-] {downloader['name']} is not installed. Skipping.")
         return False
 
-    # Replace the '{url}' placeholder with the actual URL
-    cmd = [arg.replace("{url}", url) for arg in downloader["command"]]
+    # Replace the '{url}' placeholder with the actual URL and timestamp
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    cmd = [arg.replace("{url}", url).replace("{timestamp}", timestamp) for arg in downloader["command"]]
     
     try:
         result = subprocess.run(cmd)
