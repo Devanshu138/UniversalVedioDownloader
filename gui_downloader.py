@@ -253,10 +253,18 @@ class DownloaderApp(ctk.CTk):
 
     # ── Help window ─────────────────────────────────────────────
 
+    def _copy_to_clipboard(self, text, btn):
+        """Copy text to clipboard and show feedback on the button."""
+        self.clipboard_clear()
+        self.clipboard_append(text)
+        original_text = btn.cget("text")
+        btn.configure(text="✅ Copied!", fg_color="#22c55e")
+        btn.after(1500, lambda: btn.configure(text=original_text, fg_color="#EF233C"))
+
     def show_help(self):
         help_window = ctk.CTkToplevel(self)
         help_window.title("Help & Advanced Instructions")
-        help_window.geometry("650x550")
+        help_window.geometry("700x620")
         help_window.grab_set()  # Focus on this window
         
         # Bring window to front
@@ -272,24 +280,64 @@ class DownloaderApp(ctk.CTk):
         note_frame.pack(fill="x", pady=(0, 25))
         
         note_text = "⭐ NOTE: For YouTube and most standard sites, you just need to copy the video link directly. You DON'T need to use Developer Mode!"
-        note_label = ctk.CTkLabel(note_frame, text=note_text, font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"), text_color="#60a5fa", wraplength=550, justify="left")
+        note_label = ctk.CTkLabel(note_frame, text=note_text, font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"), text_color="#60a5fa", wraplength=600, justify="left")
         note_label.pack(padx=20, pady=20, anchor="w")
 
-        # --- The Main Instructions ---
+        # --- The Main Instructions Title ---
         title_label = ctk.CTkLabel(scroll_frame, text="🛠️ How to Get Protected Video Links", font=ctk.CTkFont(family="Segoe UI", size=22, weight="bold"), text_color="#f8fafc")
-        title_label.pack(anchor="w", pady=(0, 15))
-        
-        instructions = (
-            "Step 1: Press F12 to open Developer Mode.\n\n"
-            "Step 2: Go to the 'Console' tab.\n\n"
-            "Step 3: Type 'allow pasting' and hit Enter (if prompted).\n\n"
-            "Step 4: Paste this command and hit Enter:\n"
-            "    copy(window._streams[0].file); console.log('Link copied to clipboard!');\n\n"
-            "Step 5: Come back here, paste the link, and click Download!"
-        )
-        
-        inst_label = ctk.CTkLabel(scroll_frame, text=instructions, font=ctk.CTkFont(family="Segoe UI", size=16), text_color="#cbd5e1", wraplength=550, justify="left")
-        inst_label.pack(anchor="w")
+        title_label.pack(anchor="w", pady=(0, 20))
+
+        # --- Helper to create a step card ---
+        def make_step(parent, step_num, title, description, command=None):
+            """Create a step card with optional copy button."""
+            card = ctk.CTkFrame(parent, fg_color="#1a1b2e", corner_radius=10, border_width=1, border_color="#2B2D42")
+            card.pack(fill="x", pady=(0, 12))
+            card.grid_columnconfigure(0, weight=1)
+
+            # Step header
+            header = ctk.CTkLabel(card, text=f"Step {step_num}: {title}", font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"), text_color="#EDF2F4")
+            header.grid(row=0, column=0, sticky="w", padx=15, pady=(12, 4))
+
+            # Description
+            desc = ctk.CTkLabel(card, text=description, font=ctk.CTkFont(family="Segoe UI", size=14), text_color="#8D99AE", wraplength=500, justify="left")
+            desc.grid(row=1, column=0, sticky="w", padx=15, pady=(0, 10))
+
+            if command:
+                # Command box + Copy button row
+                cmd_frame = ctk.CTkFrame(card, fg_color="#0f1120", corner_radius=8)
+                cmd_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=15, pady=(0, 12))
+                cmd_frame.grid_columnconfigure(0, weight=1)
+
+                cmd_label = ctk.CTkLabel(cmd_frame, text=command, font=ctk.CTkFont(family="Consolas", size=13), text_color="#22c55e", wraplength=480, justify="left")
+                cmd_label.grid(row=0, column=0, sticky="w", padx=12, pady=10)
+
+                copy_btn = ctk.CTkButton(cmd_frame, text="📋 Copy", width=80, height=32, corner_radius=8, fg_color="#EF233C", hover_color="#D90429", font=ctk.CTkFont(size=12, weight="bold"), command=lambda c=command, b=None: None)
+                copy_btn.grid(row=0, column=1, padx=(5, 10), pady=10)
+                # Re-bind with actual button reference
+                copy_btn.configure(command=lambda c=command, b=copy_btn: self._copy_to_clipboard(c, b))
+
+        # --- Step Cards ---
+        make_step(scroll_frame, 1,
+                  "Open Developer Tools",
+                  "Press F12 on your keyboard to open the browser's Developer Tools panel.")
+
+        make_step(scroll_frame, 2,
+                  "Go to the Console Tab",
+                  "Click on the 'Console' tab at the top of the Developer Tools panel.")
+
+        make_step(scroll_frame, 3,
+                  "Allow Pasting",
+                  "The console may block pasting. Type this command and press Enter:",
+                  command="allow pasting")
+
+        make_step(scroll_frame, 4,
+                  "Extract the Video Link",
+                  "Paste this command into the console and press Enter to copy the video link:",
+                  command="copy(window._streams[0].file); console.log('Link copied to clipboard!');")
+
+        make_step(scroll_frame, 5,
+                  "Download!",
+                  "Come back to this app, paste the link (Ctrl+V) into the input box, and click Download!")
 
     # ── Download controls ───────────────────────────────────────
 
