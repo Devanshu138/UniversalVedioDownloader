@@ -6,7 +6,7 @@ A python-based desktop GUI application that can download videos from almost any 
 
 Developed by **Devanshu** 💻
 - **GitHub**: [@Devanshu138](https://github.com/Devanshu138)
-- **Instagram**: [Follow on Instagram 📸](https://instagram.com/devanshu138) 
+- **Instagram**: [Follow on Instagram 📸](https://instagram.com/_devanshugautam) 
 
 ## Features
 - **Sleek Modern GUI**: Built with `customtkinter` for a dark-mode, premium look.
