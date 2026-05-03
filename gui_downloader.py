@@ -164,7 +164,7 @@ class DownloaderApp(ctk.CTk):
         
         ig_link = ctk.CTkLabel(self.footer_frame, text="Instagram", font=ctk.CTkFont(size=13, underline=True), text_color=("#D90429", "#EF233C"), cursor="hand2")
         ig_link.pack(side="left", padx=(0, 8))
-        ig_link.bind("<Button-1>", lambda e: webbrowser.open("https://instagram.com/_devanshugautam"))
+        ig_link.bind("<Button-1>", lambda e: webbrowser.open("https://www.instagram.com/_devanshugautam"))
         
         sep = ctk.CTkLabel(self.footer_frame, text="·", font=ctk.CTkFont(size=13), text_color=("#5a6070", "#8D99AE"))
         sep.pack(side="left", padx=(0, 8))
