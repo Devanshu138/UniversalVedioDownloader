@@ -42,7 +42,13 @@ class DownloaderApp(ctk.CTk):
         self.geometry("850x700")
         self.minsize(800, 600)
 
-        # Set window icon
+        # Asset path helper (works in dev and PyInstaller bundle)
+        def asset_path(filename):
+            # PyInstaller stores data in _MEIPASS temp dir
+            base = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+            return os.path.join(base, filename)
+        self._asset_path = asset_path
+
         base_dir = os.path.dirname(os.path.abspath(__file__))
         icon_path = os.path.join(base_dir, "app.ico")
         if os.path.exists(icon_path):
@@ -196,7 +202,7 @@ class DownloaderApp(ctk.CTk):
         toast.attributes("-topmost", True)
 
         # Load profile screenshot
-        profile_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "instagram_profile.png")
+        profile_path = self._asset_path("instagram_profile.png")
         has_image = False
         if os.path.exists(profile_path):
             from PIL import Image, ImageTk

@@ -65,6 +65,11 @@ def step_pyinstaller():
         cmd += ["--icon", ICON_FILE]
         cmd += ["--add-data", f"{ICON_FILE};."]
 
+    # Include extra assets
+    for asset in ["instagram_profile.png", "app_icon.png"]:
+        if os.path.exists(asset):
+            cmd += ["--add-data", f"{asset};."]
+
     # Include hidden imports for download engines
     for mod in ["yt_dlp", "you_get", "streamlink", "customtkinter", "psutil"]:
         cmd += ["--hidden-import", mod]
