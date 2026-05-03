@@ -40,8 +40,8 @@ class DownloaderApp(ctk.CTk):
         super().__init__()
 
         self.title("Universal Video Downloader")
-        self.geometry("800x600")
-        self.minsize(750, 550)
+        self.geometry("850x700")
+        self.minsize(800, 600)
 
         # Set window icon
         icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.ico")
@@ -64,7 +64,7 @@ class DownloaderApp(ctk.CTk):
         self.content = ctk.CTkFrame(self, fg_color="transparent")
         self.content.place(relx=0, rely=0, relwidth=1, relheight=1)
         self.content.grid_columnconfigure(0, weight=1)
-        self.content.grid_rowconfigure(2, weight=1)
+        self.content.grid_rowconfigure(4, weight=1)
 
         # Header Frame
         self.header_frame = ctk.CTkFrame(self.content, fg_color=("#EDF2F4", "#2B2D42"), corner_radius=15)
@@ -94,9 +94,36 @@ class DownloaderApp(ctk.CTk):
         self.stop_btn = ctk.CTkButton(self.input_frame, text="⏹ Stop", height=48, width=105, corner_radius=12, command=self.stop_download, fg_color="#D90429", hover_color="#a80320", font=ctk.CTkFont(size=13, weight="bold"), state="disabled")
         self.stop_btn.grid(row=0, column=3, padx=(0, 15), pady=15)
 
+        # Options Row (Quality + Subtitles + Batch toggle)
+        self.options_frame = ctk.CTkFrame(self.content, fg_color=("#EDF2F4", "#2B2D42"), corner_radius=15, border_width=1, border_color=("#8D99AE", "#3d3f5c"))
+        self.options_frame.grid(row=2, column=0, padx=25, pady=(0, 10), sticky="ew")
+        self.options_frame.grid_columnconfigure(3, weight=1)
+
+        q_label = ctk.CTkLabel(self.options_frame, text="Quality:", font=ctk.CTkFont(size=13, weight="bold"), text_color=("#2B2D42", "#EDF2F4"))
+        q_label.grid(row=0, column=0, padx=(15, 5), pady=12)
+
+        self.quality_var = ctk.StringVar(value="Best")
+        self.quality_menu = ctk.CTkOptionMenu(self.options_frame, variable=self.quality_var, values=["Best", "1080p", "720p", "480p", "Audio Only"], width=130, height=36, corner_radius=10, fg_color="#1a1b2e", button_color="#EF233C", button_hover_color="#D90429", font=ctk.CTkFont(size=13))
+        self.quality_menu.grid(row=0, column=1, padx=(0, 15), pady=12)
+
+        self.subs_var = ctk.BooleanVar(value=False)
+        self.subs_check = ctk.CTkCheckBox(self.options_frame, text="Auto Subtitles", variable=self.subs_var, font=ctk.CTkFont(size=13, weight="bold"), text_color=("#2B2D42", "#EDF2F4"), fg_color="#EF233C", hover_color="#D90429", corner_radius=6)
+        self.subs_check.grid(row=0, column=2, padx=(0, 15), pady=12)
+
+        self.batch_var = ctk.BooleanVar(value=False)
+        self.batch_check = ctk.CTkCheckBox(self.options_frame, text="Batch Mode", variable=self.batch_var, font=ctk.CTkFont(size=13, weight="bold"), text_color=("#2B2D42", "#EDF2F4"), fg_color="#EF233C", hover_color="#D90429", corner_radius=6, command=self._toggle_batch)
+        self.batch_check.grid(row=0, column=3, padx=(0, 15), pady=12, sticky="w")
+
+        # Batch URL text area (hidden by default)
+        self.batch_frame = ctk.CTkFrame(self.content, fg_color=("#EDF2F4", "#2B2D42"), corner_radius=15, border_width=1, border_color=("#8D99AE", "#3d3f5c"))
+        self.batch_textbox = ctk.CTkTextbox(self.batch_frame, height=100, corner_radius=10, font=ctk.CTkFont(family="Consolas", size=13), fg_color="#0f1120", text_color="#22c55e")
+        self.batch_textbox.pack(fill="both", expand=True, padx=15, pady=15)
+        self.batch_textbox.insert("1.0", "# Paste one URL per line\n")
+        # batch_frame is hidden by default, shown when Batch Mode is toggled
+
         # Progress Section (glass panel)
         self.progress_frame = ctk.CTkFrame(self.content, fg_color=("#EDF2F4", "#2B2D42"), corner_radius=15, border_width=1, border_color=("#8D99AE", "#3d3f5c"))
-        self.progress_frame.grid(row=2, column=0, padx=25, pady=(10, 10), sticky="nsew")
+        self.progress_frame.grid(row=4, column=0, padx=25, pady=(0, 10), sticky="nsew")
         
         self.progress_frame.grid_columnconfigure(0, weight=1)
         self.progress_frame.grid_columnconfigure(1, weight=1)
@@ -120,7 +147,7 @@ class DownloaderApp(ctk.CTk):
 
         # Developer Details (Professional & Clickable)
         self.footer_frame = ctk.CTkFrame(self.content, fg_color="transparent")
-        self.footer_frame.grid(row=3, column=0, pady=(0, 15))
+        self.footer_frame.grid(row=5, column=0, pady=(0, 15))
         
         dev_label = ctk.CTkLabel(self.footer_frame, text="Developed by Devanshu  ·  ", font=ctk.CTkFont(size=13), text_color=("#5a6070", "#8D99AE"))
         dev_label.pack(side="left")
@@ -174,7 +201,16 @@ class DownloaderApp(ctk.CTk):
         self._draw_gradient()
         self.after(100, self._animate_gradient)  # ~10 FPS, very light
 
-    # ── UI helpers ──────────────────────────────────────────────
+    def _toggle_batch(self):
+        """Show/hide batch URL text area."""
+        if self.batch_var.get():
+            self.batch_frame.grid(row=3, column=0, padx=25, pady=(0, 10), sticky="ew")
+            self.url_entry.configure(placeholder_text="Batch Mode: use the box below ↓")
+            self.url_entry.configure(state="disabled")
+        else:
+            self.batch_frame.grid_forget()
+            self.url_entry.configure(state="normal")
+            self.url_entry.configure(placeholder_text="Paste your video link here (e.g. YouTube, Twitter, Vimeo...)")
 
     def update_status(self, text, color="#f8fafc"):
         self.status_label.configure(text=text, text_color=color)
@@ -191,16 +227,42 @@ class DownloaderApp(ctk.CTk):
         self.url_entry.configure(state="disabled")
         self.pause_btn.configure(state="normal", text="⏸ Pause")
         self.stop_btn.configure(state="normal")
+        self.quality_menu.configure(state="disabled")
+        self.subs_check.configure(state="disabled")
+        self.batch_check.configure(state="disabled")
 
     def set_controls_idle(self):
         """Switch buttons back to the 'idle' state."""
-        self.download_btn.configure(state="normal", text="Download")
-        self.url_entry.configure(state="normal")
+        self.download_btn.configure(state="normal", text="⬇ Download")
+        if not self.batch_var.get():
+            self.url_entry.configure(state="normal")
         self.pause_btn.configure(state="disabled", text="⏸ Pause")
         self.stop_btn.configure(state="disabled")
+        self.quality_menu.configure(state="normal")
+        self.subs_check.configure(state="normal")
+        self.batch_check.configure(state="normal")
         self.is_paused = False
         self.is_stopped = False
         self.current_process = None
+
+    def _get_quality_args(self):
+        """Build yt-dlp format arguments based on quality selection."""
+        q = self.quality_var.get()
+        if q == "1080p":
+            return ["-f", "bestvideo[height<=1080]+bestaudio/best[height<=1080]"]
+        elif q == "720p":
+            return ["-f", "bestvideo[height<=720]+bestaudio/best[height<=720]"]
+        elif q == "480p":
+            return ["-f", "bestvideo[height<=480]+bestaudio/best[height<=480]"]
+        elif q == "Audio Only":
+            return ["-x", "--audio-format", "mp3"]
+        return []  # "Best" = default
+
+    def _get_subtitle_args(self):
+        """Build yt-dlp subtitle arguments."""
+        if self.subs_var.get():
+            return ["--write-auto-subs", "--sub-langs", "en,hi", "--embed-subs"]
+        return []
 
     # ── Progress parser ─────────────────────────────────────────
 
@@ -342,20 +404,50 @@ class DownloaderApp(ctk.CTk):
     # ── Download controls ───────────────────────────────────────
 
     def start_download(self):
-        url = self.url_entry.get().strip()
-        if not url:
-            self.update_status("Error: No URL provided.", "#ef4444")
-            return
+        # Collect URLs
+        if self.batch_var.get():
+            raw = self.batch_textbox.get("1.0", "end").strip()
+            urls = [u.strip() for u in raw.splitlines() if u.strip() and not u.strip().startswith("#")]
+            if not urls:
+                self.update_status("Error: No URLs in batch list.", "#ef4444")
+                return
+        else:
+            url = self.url_entry.get().strip()
+            if not url:
+                self.update_status("Error: No URL provided.", "#ef4444")
+                return
+            urls = [url]
 
         self.is_stopped = False
         self.is_paused = False
         self.set_controls_downloading()
         self.reset_progress()
-        self.update_status("Initializing...", "#f8fafc")
 
-        # Run in a background thread to prevent freezing the GUI
-        thread = threading.Thread(target=self.download_process, args=(url,), daemon=True)
-        thread.start()
+        quality_args = self._get_quality_args()
+        subtitle_args = self._get_subtitle_args()
+
+        if len(urls) == 1:
+            self.update_status("Initializing...", "#f8fafc")
+            thread = threading.Thread(target=self.download_process, args=(urls[0], quality_args, subtitle_args), daemon=True)
+            thread.start()
+        else:
+            self.update_status(f"Batch: 0/{len(urls)} completed", "#f8fafc")
+            thread = threading.Thread(target=self._batch_download, args=(urls, quality_args, subtitle_args), daemon=True)
+            thread.start()
+
+    def _batch_download(self, urls, quality_args, subtitle_args):
+        """Download multiple URLs sequentially."""
+        total = len(urls)
+        for i, url in enumerate(urls, 1):
+            if self.is_stopped:
+                break
+            self.after(0, self.update_status, f"Batch [{i}/{total}]: Starting...", "#38bdf8")
+            self.after(0, self.reset_progress)
+            self.download_process(url, quality_args, subtitle_args, batch_label=f"[{i}/{total}]")
+
+        if not self.is_stopped:
+            self.after(0, self.update_status, f"Batch complete! {total} videos processed ✓", "#10b981")
+        self.after(0, self.set_controls_idle)
 
     def toggle_pause(self):
         """Pause or resume the running subprocess using psutil."""
@@ -412,9 +504,11 @@ class DownloaderApp(ctk.CTk):
         yt_patterns = ["youtube.com", "youtu.be", "youtube-nocookie.com"]
         return any(p in url.lower() for p in yt_patterns)
 
-    def download_process(self, url):
+    def download_process(self, url, quality_args=None, subtitle_args=None, batch_label=""):
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         success_overall = False
+        quality_args = quality_args or []
+        subtitle_args = subtitle_args or []
 
         # Pick output folder based on URL
         if self._is_youtube(url):
@@ -427,7 +521,8 @@ class DownloaderApp(ctk.CTk):
             if self.is_stopped:
                 break
 
-            self.after(0, self.update_status, f"Attempting download with {downloader['name']}...", "#f8fafc")
+            label = f"{batch_label} " if batch_label else ""
+            self.after(0, self.update_status, f"{label}Trying {downloader['name']}...", "#f8fafc")
             
             try:
                 subprocess.run(downloader["check"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
@@ -435,6 +530,12 @@ class DownloaderApp(ctk.CTk):
                 continue
 
             cmd = [arg.replace("{url}", url).replace("{timestamp}", timestamp) for arg in downloader["command"]]
+
+            # Inject quality and subtitle args for yt-dlp
+            if downloader["name"] == "yt-dlp":
+                insert_pos = cmd.index("--no-warnings") + 1
+                for arg in reversed(quality_args + subtitle_args):
+                    cmd.insert(insert_pos, arg)
 
             # Replace the output filename with the correct folder path
             for i, arg in enumerate(cmd):
@@ -444,7 +545,6 @@ class DownloaderApp(ctk.CTk):
                     cmd[i] = os.path.join(folder, arg)
             
             try:
-                # hide console window on windows
                 creationflags = 0
                 if sys.platform == "win32":
                     creationflags = subprocess.CREATE_NO_WINDOW
@@ -456,7 +556,6 @@ class DownloaderApp(ctk.CTk):
                     if self.is_stopped:
                         process.terminate()
                         break
-                    # Update GUI safely from thread
                     self.after(0, self.parse_and_update, line)
                 
                 process.wait()
@@ -466,7 +565,7 @@ class DownloaderApp(ctk.CTk):
 
                 if process.returncode == 0:
                     folder_name = "YouTube Videos" if self._is_youtube(url) else "Others"
-                    self.after(0, self.update_status, f"Saved to '{folder_name}' folder ✓", "#10b981")
+                    self.after(0, self.update_status, f"{label}Saved to '{folder_name}' ✓", "#10b981")
                     self.after(0, lambda: self.progress_bar.set(1.0))
                     self.after(0, lambda: self.pct_label.configure(text="100%"))
                     self.after(0, lambda: self.speed_label.configure(text="Speed: Done"))
@@ -477,10 +576,11 @@ class DownloaderApp(ctk.CTk):
                 print(f"Error: {e}")
 
         if not success_overall and not self.is_stopped:
-            self.after(0, self.update_status, "All download attempts failed. Check URL.", "#ef4444")
+            self.after(0, self.update_status, f"{batch_label} Failed. Check URL.", "#ef4444")
 
-        # Re-enable UI
-        self.after(0, self.set_controls_idle)
+        # Only reset controls if NOT in batch mode (batch handles it)
+        if not batch_label:
+            self.after(0, self.set_controls_idle)
 
 if __name__ == "__main__":
     app = DownloaderApp()
