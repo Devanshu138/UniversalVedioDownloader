@@ -18,7 +18,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
-
+SetupIconFile=k:\Experiment\app.ico
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
