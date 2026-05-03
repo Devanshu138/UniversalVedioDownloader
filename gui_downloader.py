@@ -10,7 +10,7 @@ import re
 import psutil
 
 ctk.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
-ctk.set_default_color_theme("dark-blue")  # Themes: "blue" (standard), "green", "dark-blue"
+ctk.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
 
 # yt-dlp uses --continue by default, so partial .part files are auto-resumed.
 # We add --retries and --fragment-retries for network resilience.
@@ -164,18 +164,28 @@ class DownloaderApp(ctk.CTk):
         
         ig_link = ctk.CTkLabel(self.footer_frame, text="Instagram", font=ctk.CTkFont(size=13, underline=True), text_color=("#D90429", "#EF233C"), cursor="hand2")
         ig_link.pack(side="left", padx=(0, 8))
-        ig_link.bind("<Button-1>", lambda e: webbrowser.open("https://www.instagram.com/_devanshugautam"))
+        ig_link.bind("<Button-1>", lambda e: self._open_url("https://www.instagram.com/_devanshugautam/"))
         
         sep = ctk.CTkLabel(self.footer_frame, text="·", font=ctk.CTkFont(size=13), text_color=("#5a6070", "#8D99AE"))
         sep.pack(side="left", padx=(0, 8))
 
         github_link = ctk.CTkLabel(self.footer_frame, text="GitHub", font=ctk.CTkFont(size=13, underline=True), text_color=("#D90429", "#EF233C"), cursor="hand2")
         github_link.pack(side="left")
-        github_link.bind("<Button-1>", lambda e: webbrowser.open("https://github.com/Devanshu138"))
+        github_link.bind("<Button-1>", lambda e: self._open_url("https://github.com/Devanshu138"))
 
-    # ── Background ───────────────────────────────────────────────
-    # Using solid dark navy (#2B2D42) CTk background — no canvas,
-    # no flicker on resize. Premium look through styled panels.
+    # ── URL opener ────────────────────────────────────────────────
+
+    @staticmethod
+    def _open_url(url):
+        """Open URL in user's default browser with existing session/cookies.
+        Uses os.startfile on Windows for best session handling."""
+        try:
+            if sys.platform == "win32":
+                os.startfile(url)
+            else:
+                webbrowser.open(url, new=2)
+        except Exception:
+            webbrowser.open(url, new=2)
 
     def _toggle_batch(self):
         """Show/hide batch URL text area."""
