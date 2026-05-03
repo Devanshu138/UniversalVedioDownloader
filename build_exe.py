@@ -29,6 +29,7 @@ EXE_NAME = "UniversalVideoDownloader"
 
 # Inno Setup compiler paths (tries both)
 ISCC_PATHS = [
+    r"A:\Inno Setup 6\ISCC.exe",
     r"C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
     r"C:\Program Files\Inno Setup 6\ISCC.exe",
 ]
