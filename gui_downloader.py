@@ -205,7 +205,7 @@ class DownloaderApp(ctk.CTk):
             has_image = True
 
         win_w = 340
-        win_h = 620 if has_image else 160
+        win_h = 690 if has_image else 160
 
         # Center on screen
         x = (toast.winfo_screenwidth() - win_w) // 2
