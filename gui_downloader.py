@@ -188,35 +188,54 @@ class DownloaderApp(ctk.CTk):
             webbrowser.open(url, new=2)
 
     def _open_instagram(self):
-        """Open Instagram with fallback copy-link popup."""
-        ig_url = "https://www.instagram.com/_devanshugautam/"
-        self._open_url(ig_url)
-
-        # Show small toast with copy option
+        """Show Instagram profile popup with screenshot and copy handle button."""
         toast = ctk.CTkToplevel(self)
-        toast.title("Instagram")
-        toast.geometry("340x130")
+        toast.title("📸 Instagram — @_devanshugautam")
         toast.resizable(False, False)
         toast.grab_set()
         toast.attributes("-topmost", True)
 
-        # Center on screen
-        toast.update_idletasks()
-        x = (toast.winfo_screenwidth() - 340) // 2
-        y = (toast.winfo_screenheight() - 130) // 2
-        toast.geometry(f"340x130+{x}+{y}")
+        # Load profile screenshot
+        profile_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "instagram_profile.png")
+        has_image = False
+        if os.path.exists(profile_path):
+            from PIL import Image, ImageTk
+            pil_img = Image.open(profile_path)
+            self._ig_photo = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(280, 500))
+            has_image = True
 
-        ctk.CTkLabel(toast, text="📸  @_devanshugautam", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(15, 5))
-        ctk.CTkLabel(toast, text="If Instagram asks to log in, search the handle above.", font=ctk.CTkFont(size=12), text_color="#8D99AE").pack()
+        win_w = 340
+        win_h = 620 if has_image else 160
+
+        # Center on screen
+        x = (toast.winfo_screenwidth() - win_w) // 2
+        y = (toast.winfo_screenheight() - win_h) // 2
+        toast.geometry(f"{win_w}x{win_h}+{x}+{y}")
+
+        # Profile image
+        if has_image:
+            img_label = ctk.CTkLabel(toast, image=self._ig_photo, text="")
+            img_label.pack(pady=(15, 8))
+
+        # Handle text
+        ctk.CTkLabel(toast, text="📸  @_devanshugautam", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(5 if has_image else 15, 3))
+        ctk.CTkLabel(toast, text="Search this handle on Instagram to follow!", font=ctk.CTkFont(size=12), text_color="#8D99AE").pack()
+
+        # Buttons row
+        btn_frame = ctk.CTkFrame(toast, fg_color="transparent")
+        btn_frame.pack(pady=(10, 10))
 
         def copy_handle():
             self.clipboard_clear()
             self.clipboard_append("_devanshugautam")
             copy_btn.configure(text="✅ Copied!")
-            toast.after(1200, toast.destroy)
+            toast.after(1500, toast.destroy)
 
-        copy_btn = ctk.CTkButton(toast, text="📋 Copy Handle", command=copy_handle, fg_color="#EF233C", hover_color="#D90429", height=32, corner_radius=8)
-        copy_btn.pack(pady=(8, 0))
+        copy_btn = ctk.CTkButton(btn_frame, text="📋 Copy Handle", command=copy_handle, fg_color="#EF233C", hover_color="#D90429", height=34, corner_radius=8, width=140)
+        copy_btn.pack(side="left", padx=(0, 8))
+
+        close_btn = ctk.CTkButton(btn_frame, text="✕ Close", command=toast.destroy, fg_color="#3d3f5c", hover_color="#5a6070", height=34, corner_radius=8, width=100)
+        close_btn.pack(side="left")
 
     def _toggle_batch(self):
         """Show/hide batch URL text area."""
