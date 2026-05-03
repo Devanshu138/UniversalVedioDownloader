@@ -65,8 +65,8 @@ class DownloaderApp(ctk.CTk):
         # Set base colors to match gradient (prevents black flash on resize)
         dark_bg = "#1e2032"
         self.configure(fg_color=dark_bg)
-        self.tk.call("tk", "scaling", self.tk.call("tk", "scaling"))  # refresh
-        self["bg"] = dark_bg  # Raw tkinter bg
+        self.wm_attributes("-alpha", 1.0)  # force redraw
+        self.tk.call(".", "configure", "-background", dark_bg)  # Raw tkinter bg
 
         # ── Animated gradient background ────────────────────────
         self.bg_canvas = tk.Canvas(self, highlightthickness=0, bd=0, bg=dark_bg)
