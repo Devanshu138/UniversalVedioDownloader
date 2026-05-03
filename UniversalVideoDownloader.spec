@@ -5,7 +5,7 @@ a = Analysis(
     ['gui_downloader.py'],
     pathex=[],
     binaries=[],
-    datas=[('README.md', '.'), ('app.ico', '.'), ('K:\\Experiment\\venv\\Lib\\site-packages\\customtkinter', 'customtkinter/')],
+    datas=[('README.md', '.'), ('app.ico', '.'), ('instagram_profile.png', '.'), ('app_icon.png', '.'), ('K:\\Experiment\\venv\\Lib\\site-packages\\customtkinter', 'customtkinter/')],
     hiddenimports=['yt_dlp', 'you_get', 'streamlink', 'customtkinter', 'psutil'],
     hookspath=[],
     hooksconfig={},
