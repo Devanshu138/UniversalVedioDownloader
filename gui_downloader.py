@@ -8,7 +8,6 @@ import time
 import webbrowser
 import re
 import psutil
-import math
 
 ctk.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
 ctk.set_default_color_theme("dark-blue")  # Themes: "blue" (standard), "green", "dark-blue"
@@ -60,25 +59,15 @@ class DownloaderApp(ctk.CTk):
         self.is_paused = False        # Pause state flag
         self.is_stopped = False       # Stop state flag
         self._gradient_offset = 0     # For animation
-        self._resize_timer = None     # For debounced resize
+        self._bg_photo = None         # Keep reference to prevent GC
 
-        # Set base colors to match gradient (prevents black flash on resize)
-        dark_bg = "#1e2032"
+        # Set base colors to match gradient (prevents flash on resize)
+        dark_bg = "#2B2D42"
         self.configure(fg_color=dark_bg)
-        self.wm_attributes("-alpha", 1.0)  # force redraw
-        self.tk.call(".", "configure", "-background", dark_bg)  # Raw tkinter bg
 
-        # ── Animated gradient background ────────────────────────
-        self.bg_canvas = tk.Canvas(self, highlightthickness=0, bd=0, bg=dark_bg)
-        self.bg_canvas.place(x=0, y=0, relwidth=1, relheight=1)
-        self._draw_gradient()
-        self.bg_canvas.bind("<Configure>", self._on_resize)
-        self._animate_gradient()
-
-        # ── Main content frame (sits on top of gradient) ────────
-        self.content = ctk.CTkFrame(self, fg_color="transparent")
+        # ── Main content frame (no canvas bg — use CTk native bg) ──
+        self.content = ctk.CTkFrame(self, fg_color=dark_bg)
         self.content.place(relx=0, rely=0, relwidth=1, relheight=1)
-        self.content._canvas.configure(bg=dark_bg)  # Fix inner tk canvas bg
         self.content.grid_columnconfigure(0, weight=1)
         self.content.grid_rowconfigure(4, weight=1)
 
@@ -184,49 +173,9 @@ class DownloaderApp(ctk.CTk):
         github_link.pack(side="left")
         github_link.bind("<Button-1>", lambda e: webbrowser.open("https://github.com/Devanshu138"))
 
-    # ── Gradient background ─────────────────────────────────────
-
-    def _lerp_color(self, c1, c2, t):
-        """Linearly interpolate between two (r,g,b) tuples."""
-        return tuple(int(a + (b - a) * t) for a, b in zip(c1, c2))
-
-    def _draw_gradient(self):
-        """Draw a smooth vertical gradient on the background canvas."""
-        self.bg_canvas.delete("gradient")
-        w = self.winfo_width() or 800
-        h = self.winfo_height() or 600
-
-        o = self._gradient_offset
-        # Coolors: dark navy → steel blue → deep charcoal (shifts with offset)
-        top    = self._lerp_color((30, 32, 50),  (50, 55, 75),  (0.5 + 0.5 * math.sin(o)))
-        mid    = self._lerp_color((43, 45, 66),  (65, 70, 95),  (0.5 + 0.5 * math.sin(o + 1.5)))
-        bottom = self._lerp_color((20, 22, 38),  (35, 38, 55),  (0.5 + 0.5 * math.sin(o + 3.0)))
-
-        steps = 80  # number of bands
-        half = steps // 2
-        for i in range(steps):
-            if i < half:
-                t = i / half
-                r, g, b = self._lerp_color(top, mid, t)
-            else:
-                t = (i - half) / half
-                r, g, b = self._lerp_color(mid, bottom, t)
-            color = f"#{r:02x}{g:02x}{b:02x}"
-            y0 = int(h * i / steps)
-            y1 = int(h * (i + 1) / steps) + 1
-            self.bg_canvas.create_rectangle(0, y0, w, y1, fill=color, outline=color, tags="gradient")
-
-    def _on_resize(self, event=None):
-        """Debounced resize: only redraw gradient after resize stops (smooth maximize)."""
-        if self._resize_timer:
-            self.after_cancel(self._resize_timer)
-        self._resize_timer = self.after(30, self._draw_gradient)
-
-    def _animate_gradient(self):
-        """Slowly shift the gradient colors over time."""
-        self._gradient_offset += 0.02
-        self._draw_gradient()
-        self.after(100, self._animate_gradient)  # ~10 FPS, very light
+    # ── Background ───────────────────────────────────────────────
+    # Using solid dark navy (#2B2D42) CTk background — no canvas,
+    # no flicker on resize. Premium look through styled panels.
 
     def _toggle_batch(self):
         """Show/hide batch URL text area."""
