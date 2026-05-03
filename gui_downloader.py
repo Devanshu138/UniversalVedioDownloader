@@ -103,16 +103,19 @@ class DownloaderApp(ctk.CTk):
         q_label.grid(row=0, column=0, padx=(15, 5), pady=12)
 
         self.quality_var = ctk.StringVar(value="Best")
-        self.quality_menu = ctk.CTkOptionMenu(self.options_frame, variable=self.quality_var, values=["Best", "1080p", "720p", "480p", "Audio Only"], width=130, height=36, corner_radius=10, fg_color="#1a1b2e", button_color="#EF233C", button_hover_color="#D90429", font=ctk.CTkFont(size=13))
+        self.quality_menu = ctk.CTkComboBox(self.options_frame, variable=self.quality_var, values=["Best", "1080p", "720p", "480p", "Audio Only"], width=130, height=36, corner_radius=10, fg_color="#1a1b2e", button_color="#EF233C", button_hover_color="#D90429", border_color="#3d3f5c", dropdown_fg_color="#1a1b2e", dropdown_hover_color="#EF233C", font=ctk.CTkFont(size=13), state="readonly")
         self.quality_menu.grid(row=0, column=1, padx=(0, 15), pady=12)
 
-        self.subs_var = ctk.BooleanVar(value=False)
-        self.subs_check = ctk.CTkCheckBox(self.options_frame, text="Auto Subtitles", variable=self.subs_var, font=ctk.CTkFont(size=13, weight="bold"), text_color=("#2B2D42", "#EDF2F4"), fg_color="#EF233C", hover_color="#D90429", corner_radius=6)
-        self.subs_check.grid(row=0, column=2, padx=(0, 15), pady=12)
+        s_label = ctk.CTkLabel(self.options_frame, text="Subtitles:", font=ctk.CTkFont(size=13, weight="bold"), text_color=("#2B2D42", "#EDF2F4"))
+        s_label.grid(row=0, column=2, padx=(0, 5), pady=12)
+
+        self.subs_var = ctk.StringVar(value="No Subtitles")
+        self.subs_menu = ctk.CTkComboBox(self.options_frame, variable=self.subs_var, values=["No Subtitles", "English", "Hindi", "English + Hindi"], width=145, height=36, corner_radius=10, fg_color="#1a1b2e", button_color="#EF233C", button_hover_color="#D90429", border_color="#3d3f5c", dropdown_fg_color="#1a1b2e", dropdown_hover_color="#EF233C", font=ctk.CTkFont(size=13), state="readonly")
+        self.subs_menu.grid(row=0, column=3, padx=(0, 15), pady=12)
 
         self.batch_var = ctk.BooleanVar(value=False)
         self.batch_check = ctk.CTkCheckBox(self.options_frame, text="Batch Mode", variable=self.batch_var, font=ctk.CTkFont(size=13, weight="bold"), text_color=("#2B2D42", "#EDF2F4"), fg_color="#EF233C", hover_color="#D90429", corner_radius=6, command=self._toggle_batch)
-        self.batch_check.grid(row=0, column=3, padx=(0, 15), pady=12, sticky="w")
+        self.batch_check.grid(row=0, column=4, padx=(0, 15), pady=12, sticky="w")
 
         # Batch URL text area (hidden by default)
         self.batch_frame = ctk.CTkFrame(self.content, fg_color=("#EDF2F4", "#2B2D42"), corner_radius=15, border_width=1, border_color=("#8D99AE", "#3d3f5c"))
@@ -228,7 +231,7 @@ class DownloaderApp(ctk.CTk):
         self.pause_btn.configure(state="normal", text="⏸ Pause")
         self.stop_btn.configure(state="normal")
         self.quality_menu.configure(state="disabled")
-        self.subs_check.configure(state="disabled")
+        self.subs_menu.configure(state="disabled")
         self.batch_check.configure(state="disabled")
 
     def set_controls_idle(self):
@@ -238,8 +241,8 @@ class DownloaderApp(ctk.CTk):
             self.url_entry.configure(state="normal")
         self.pause_btn.configure(state="disabled", text="⏸ Pause")
         self.stop_btn.configure(state="disabled")
-        self.quality_menu.configure(state="normal")
-        self.subs_check.configure(state="normal")
+        self.quality_menu.configure(state="readonly")
+        self.subs_menu.configure(state="readonly")
         self.batch_check.configure(state="normal")
         self.is_paused = False
         self.is_stopped = False
@@ -259,10 +262,15 @@ class DownloaderApp(ctk.CTk):
         return []  # "Best" = default
 
     def _get_subtitle_args(self):
-        """Build yt-dlp subtitle arguments."""
-        if self.subs_var.get():
-            return ["--write-auto-subs", "--sub-langs", "en,hi", "--embed-subs"]
-        return []
+        """Build yt-dlp subtitle arguments based on dropdown selection."""
+        s = self.subs_var.get()
+        if s == "English":
+            return ["--write-auto-subs", "--sub-langs", "en", "--embed-subs", "--ignore-errors"]
+        elif s == "Hindi":
+            return ["--write-auto-subs", "--sub-langs", "hi", "--embed-subs", "--ignore-errors"]
+        elif s == "English + Hindi":
+            return ["--write-auto-subs", "--sub-langs", "en,hi", "--embed-subs", "--ignore-errors"]
+        return []  # "No Subtitles"
 
     # ── Progress parser ─────────────────────────────────────────
 
@@ -326,7 +334,14 @@ class DownloaderApp(ctk.CTk):
     def show_help(self):
         help_window = ctk.CTkToplevel(self)
         help_window.title("Help & Advanced Instructions")
-        help_window.geometry("700x620")
+        
+        # Center on screen
+        win_w, win_h = 700, 620
+        screen_w = help_window.winfo_screenwidth()
+        screen_h = help_window.winfo_screenheight()
+        x = (screen_w - win_w) // 2
+        y = (screen_h - win_h) // 2
+        help_window.geometry(f"{win_w}x{win_h}+{x}+{y}")
         help_window.grab_set()  # Focus on this window
         
         # Bring window to front
