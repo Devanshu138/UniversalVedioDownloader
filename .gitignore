@@ -8,10 +8,5 @@ downloaded_video.mp4
 *.ytdl
 
 # Build artifacts
-dist/
-build/
-installer_output/
-*.spec
-installer.iss
 YouTube Videos/
 Others/

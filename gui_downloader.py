@@ -11,7 +11,7 @@ import psutil
 import math
 
 ctk.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
-ctk.set_default_color_theme("green")  # Themes: "blue" (standard), "green", "dark-blue"
+ctk.set_default_color_theme("dark-blue")  # Themes: "blue" (standard), "green", "dark-blue"
 
 # yt-dlp uses --continue by default, so partial .part files are auto-resumed.
 # We add --retries and --fragment-retries for network resilience.
