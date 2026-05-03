@@ -8,6 +8,48 @@ import webbrowser
 import re
 import signal
 
+# ── Windows process suspend/resume via ctypes ───────────────
+if sys.platform == "win32":
+    import ctypes
+    from ctypes import wintypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+
+    TH32CS_SNAPTHREAD = 0x00000004
+    THREAD_SUSPEND_RESUME = 0x0002
+
+    class THREADENTRY32(ctypes.Structure):
+        _fields_ = [
+            ("dwSize", wintypes.DWORD),
+            ("cntUsage", wintypes.DWORD),
+            ("th32ThreadID", wintypes.DWORD),
+            ("th32OwnerProcessID", wintypes.DWORD),
+            ("tpBasePri", ctypes.c_long),
+            ("tpDeltaPri", ctypes.c_long),
+            ("dwFlags", wintypes.DWORD),
+        ]
+
+    def _suspend_resume_process(pid, suspend=True):
+        """Suspend or resume all threads of a process by PID."""
+        snapshot = kernel32.CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0)
+        if snapshot == -1:
+            return
+        te = THREADENTRY32()
+        te.dwSize = ctypes.sizeof(THREADENTRY32)
+        if kernel32.Thread32First(snapshot, ctypes.byref(te)):
+            while True:
+                if te.th32OwnerProcessID == pid:
+                    h = kernel32.OpenThread(THREAD_SUSPEND_RESUME, False, te.th32ThreadID)
+                    if h:
+                        if suspend:
+                            kernel32.SuspendThread(h)
+                        else:
+                            kernel32.ResumeThread(h)
+                        kernel32.CloseHandle(h)
+                if not kernel32.Thread32Next(snapshot, ctypes.byref(te)):
+                    break
+        kernel32.CloseHandle(snapshot)
+
 ctk.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
 ctk.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
 
@@ -251,29 +293,24 @@ class DownloaderApp(ctk.CTk):
         thread.start()
 
     def toggle_pause(self):
-        """Pause or resume the running subprocess (Windows: suspend/resume)."""
+        """Pause or resume the running subprocess."""
         if self.current_process is None:
             return
 
+        pid = self.current_process.pid
+
         if not self.is_paused:
-            # PAUSE – suspend the process on Windows
+            # PAUSE
             self.is_paused = True
             self.pause_btn.configure(text="▶ Resume")
             self.update_status("Paused", "#eab308")
             try:
                 if sys.platform == "win32":
-                    # Use Windows API via subprocess to suspend
-                    subprocess.run(
-                        ["powershell", "-Command",
-                         f"(Get-Process -Id {self.current_process.pid}).Suspend()"],
-                        creationflags=subprocess.CREATE_NO_WINDOW,
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-                    )
+                    _suspend_resume_process(pid, suspend=True)
                 else:
-                    os.kill(self.current_process.pid, signal.SIGSTOP)
-            except Exception:
-                # Fallback: just set the flag; the thread will spin-wait
-                pass
+                    os.kill(pid, signal.SIGSTOP)
+            except Exception as e:
+                print(f"Pause error: {e}")
         else:
             # RESUME
             self.is_paused = False
@@ -281,16 +318,11 @@ class DownloaderApp(ctk.CTk):
             self.update_status("Resuming...", "#38bdf8")
             try:
                 if sys.platform == "win32":
-                    subprocess.run(
-                        ["powershell", "-Command",
-                         f"(Get-Process -Id {self.current_process.pid}).Resume()"],
-                        creationflags=subprocess.CREATE_NO_WINDOW,
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-                    )
+                    _suspend_resume_process(pid, suspend=False)
                 else:
-                    os.kill(self.current_process.pid, signal.SIGCONT)
-            except Exception:
-                pass
+                    os.kill(pid, signal.SIGCONT)
+            except Exception as e:
+                print(f"Resume error: {e}")
 
     def stop_download(self):
         """Stop the running download immediately."""
