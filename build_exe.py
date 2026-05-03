@@ -71,7 +71,7 @@ def step_pyinstaller():
             cmd += ["--add-data", f"{asset};."]
 
     # Include hidden imports for download engines
-    for mod in ["yt_dlp", "you_get", "streamlink", "customtkinter", "psutil"]:
+    for mod in ["yt_dlp", "you_get", "streamlink", "customtkinter", "psutil", "imageio_ffmpeg"]:
         cmd += ["--hidden-import", mod]
 
     # CustomTkinter needs its data files

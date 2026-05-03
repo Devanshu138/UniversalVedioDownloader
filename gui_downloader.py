@@ -8,31 +8,118 @@ import time
 import webbrowser
 import re
 import psutil
+import shutil
 
 ctk.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
 ctk.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
 
+# ── Frozen-app detection ─────────────────────────────────────
+# When packaged with PyInstaller, sys.executable points to our own
+# .exe, NOT to python.exe.  Running `subprocess([sys.executable, "-m",
+# "yt_dlp", ...])` would re-launch the entire GUI instead of yt-dlp.
+# Fix: detect the frozen state and find a usable Python interpreter,
+# or fall back to running yt-dlp / you-get / streamlink as standalone
+# CLI commands found on PATH.
+
+IS_FROZEN = getattr(sys, "frozen", False)
+
+def _find_python():
+    """Return a working Python interpreter path (not our own .exe)."""
+    if not IS_FROZEN:
+        return sys.executable
+    # Try common locations when frozen
+    for name in ("python", "python3", "py"):
+        found = shutil.which(name)
+        if found:
+            return found
+    return None  # No system Python found
+
+def _get_ffmpeg_path():
+    """Return the path to a bundled or system ffmpeg executable."""
+    try:
+        import imageio_ffmpeg
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:
+        return shutil.which("ffmpeg")
+
+def _build_downloaders():
+    """Build the DOWNLOADERS list using the correct executable paths."""
+    python = _find_python()
+    ffmpeg_path = _get_ffmpeg_path()
+
+    downloaders = []
+
+    ytdlp_base_args = ["--no-warnings", "--retries", "10", "--fragment-retries", "10"]
+    if ffmpeg_path:
+        ytdlp_base_args.extend(["--ffmpeg-location", ffmpeg_path])
+    ytdlp_base_args.extend(["-o", "%(title)s_{timestamp}.%(ext)s", "{url}"])
+
+    # ── yt-dlp ───────────────────────────────────────────────
+    ytdlp_exe = shutil.which("yt-dlp")
+    if python and not IS_FROZEN:
+        # Dev mode: use python -m yt_dlp
+        downloaders.append({
+            "name": "yt-dlp",
+            "command": [python, "-m", "yt_dlp"] + ytdlp_base_args,
+            "check": [python, "-m", "yt_dlp", "--version"],
+            "use_api": False,
+        })
+    elif ytdlp_exe:
+        # Frozen but yt-dlp CLI is on PATH
+        downloaders.append({
+            "name": "yt-dlp",
+            "command": [ytdlp_exe] + ytdlp_base_args,
+            "check": [ytdlp_exe, "--version"],
+            "use_api": False,
+        })
+    else:
+        # Frozen and no CLI on PATH → use yt-dlp's Python API directly
+        downloaders.append({
+            "name": "yt-dlp",
+            "command": [],   # Not used when use_api=True
+            "check": [],
+            "use_api": True,
+        })
+
+    # ── you-get ──────────────────────────────────────────────
+    youget_exe = shutil.which("you-get")
+    if python and not IS_FROZEN:
+        downloaders.append({
+            "name": "you-get",
+            "command": [python, "-m", "you_get", "-O", "video_{timestamp}", "{url}"],
+            "check": [python, "-m", "you_get", "--version"],
+            "use_api": False,
+        })
+    elif youget_exe:
+        downloaders.append({
+            "name": "you-get",
+            "command": [youget_exe, "-O", "video_{timestamp}", "{url}"],
+            "check": [youget_exe, "--version"],
+            "use_api": False,
+        })
+
+    # ── streamlink ───────────────────────────────────────────
+    streamlink_exe = shutil.which("streamlink")
+    if python and not IS_FROZEN:
+        downloaders.append({
+            "name": "streamlink",
+            "command": [python, "-m", "streamlink", "{url}", "best", "-o", "video_{timestamp}.mp4"],
+            "check": [python, "-m", "streamlink", "--version"],
+            "use_api": False,
+        })
+    elif streamlink_exe:
+        downloaders.append({
+            "name": "streamlink",
+            "command": [streamlink_exe, "{url}", "best", "-o", "video_{timestamp}.mp4"],
+            "check": [streamlink_exe, "--version"],
+            "use_api": False,
+        })
+
+    return downloaders
+
 # yt-dlp uses --continue by default, so partial .part files are auto-resumed.
 # We add --retries and --fragment-retries for network resilience.
-DOWNLOADERS = [
-    {
-        "name": "yt-dlp",
-        "command": [sys.executable, "-m", "yt_dlp", "--no-warnings",
-                    "--retries", "10", "--fragment-retries", "10",
-                    "-o", "%(title)s_{timestamp}.%(ext)s", "{url}"],
-        "check": [sys.executable, "-m", "yt_dlp", "--version"]
-    },
-    {
-        "name": "you-get",
-        "command": [sys.executable, "-m", "you_get", "-O", "video_{timestamp}", "{url}"],
-        "check": [sys.executable, "-m", "you_get", "--version"]
-    },
-    {
-        "name": "streamlink",
-        "command": [sys.executable, "-m", "streamlink", "{url}", "best", "-o", "video_{timestamp}.mp4"],
-        "check": [sys.executable, "-m", "streamlink", "--version"]
-    }
-]
+DOWNLOADERS = _build_downloaders()
 
 class DownloaderApp(ctk.CTk):
     def __init__(self):
@@ -311,6 +398,32 @@ class DownloaderApp(ctk.CTk):
             return ["--write-auto-subs", "--sub-langs", "en,hi", "--embed-subs", "--ignore-errors"]
         return []  # "No Subtitles"
 
+    # ── yt-dlp Python API progress hook ─────────────────────────
+
+    def _ytdlp_progress_hook(self, d, batch_label=""):
+        """Called by yt_dlp.YoutubeDL when using the Python API directly."""
+        label = f"{batch_label} " if batch_label else ""
+        status = d.get("status", "")
+
+        if status == "downloading":
+            pct = d.get("_percent_str", "??%").strip()
+            speed = d.get("_speed_str", "--").strip()
+            eta = d.get("_eta_str", "--").strip()
+            try:
+                pct_num = float(pct.replace("%", ""))
+                self.after(0, lambda: self.progress_bar.set(pct_num / 100.0))
+                self.after(0, lambda: self.pct_label.configure(text=f"{pct_num}%"))
+            except (ValueError, TypeError):
+                pass
+            self.after(0, lambda: self.speed_label.configure(text=f"Speed: {speed}"))
+            self.after(0, lambda: self.eta_label.configure(text=f"ETA: {eta}"))
+            self.after(0, self.update_status, f"{label}Downloading...", "#38bdf8")
+
+        elif status == "finished":
+            self.after(0, lambda: self.progress_bar.set(1.0))
+            self.after(0, lambda: self.pct_label.configure(text="100%"))
+            self.after(0, self.update_status, f"{label}Processing...", "#eab308")
+
     # ── Progress parser ─────────────────────────────────────────
 
     def parse_and_update(self, line):
@@ -565,10 +678,17 @@ class DownloaderApp(ctk.CTk):
         subtitle_args = subtitle_args or []
 
         # Pick output folder based on URL
-        if self._is_youtube(url):
-            folder = os.path.join(os.getcwd(), "YouTube Videos")
+        # Use the app's own directory (not os.getcwd() which may differ for
+        # installed apps launched from shortcuts).
+        if IS_FROZEN:
+            app_dir = os.path.dirname(sys.executable)
         else:
-            folder = os.path.join(os.getcwd(), "Others")
+            app_dir = os.path.dirname(os.path.abspath(__file__))
+
+        if self._is_youtube(url):
+            folder = os.path.join(app_dir, "YouTube Videos")
+        else:
+            folder = os.path.join(app_dir, "Others")
         os.makedirs(folder, exist_ok=True)
         
         for downloader in DOWNLOADERS:
@@ -577,7 +697,66 @@ class DownloaderApp(ctk.CTk):
 
             label = f"{batch_label} " if batch_label else ""
             self.after(0, self.update_status, f"{label}Trying {downloader['name']}...", "#f8fafc")
-            
+
+            # ── yt-dlp Python API path (frozen exe fallback) ─────
+            if downloader.get("use_api"):
+                try:
+                    import yt_dlp
+                except ImportError:
+                    continue  # yt-dlp not available, try next downloader
+
+                self.after(0, self.update_status, f"{label}Downloading with yt-dlp...", "#38bdf8")
+                try:
+                    outtmpl = os.path.join(folder, f"%(title)s_{timestamp}.%(ext)s")
+                    ydl_opts = {
+                        "outtmpl": outtmpl,
+                        "nowarnings": True,
+                        "retries": 10,
+                        "fragment_retries": 10,
+                        "progress_hooks": [lambda d: self._ytdlp_progress_hook(d, label)],
+                    }
+                    ffmpeg_path = _get_ffmpeg_path()
+                    if ffmpeg_path:
+                        ydl_opts["ffmpeg_location"] = ffmpeg_path
+                    # Map GUI quality args to yt-dlp options
+                    q = self.quality_var.get()
+                    if q == "1080p":
+                        ydl_opts["format"] = "bestvideo[height<=1080]+bestaudio/best[height<=1080]"
+                    elif q == "720p":
+                        ydl_opts["format"] = "bestvideo[height<=720]+bestaudio/best[height<=720]"
+                    elif q == "480p":
+                        ydl_opts["format"] = "bestvideo[height<=480]+bestaudio/best[height<=480]"
+                    elif q == "Audio Only":
+                        ydl_opts["format"] = "bestaudio/best"
+                        ydl_opts["postprocessors"] = [{"key": "FFmpegExtractAudio", "preferredcodec": "mp3"}]
+
+                    # Map GUI subtitle args
+                    s = self.subs_var.get()
+                    if s == "English":
+                        ydl_opts.update({"writeautomaticsub": True, "subtitleslangs": ["en"], "embedsubtitles": True})
+                    elif s == "Hindi":
+                        ydl_opts.update({"writeautomaticsub": True, "subtitleslangs": ["hi"], "embedsubtitles": True})
+                    elif s == "English + Hindi":
+                        ydl_opts.update({"writeautomaticsub": True, "subtitleslangs": ["en", "hi"], "embedsubtitles": True})
+
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        ydl.download([url])
+
+                    if not self.is_stopped:
+                        folder_name = "YouTube Videos" if self._is_youtube(url) else "Others"
+                        self.after(0, self.update_status, f"{label}Saved to '{folder_name}' ✓", "#10b981")
+                        self.after(0, lambda: self.progress_bar.set(1.0))
+                        self.after(0, lambda: self.pct_label.configure(text="100%"))
+                        self.after(0, lambda: self.speed_label.configure(text="Speed: Done"))
+                        self.after(0, lambda: self.eta_label.configure(text="ETA: 00:00"))
+                        success_overall = True
+                        break
+                except Exception as e:
+                    print(f"yt-dlp API error: {e}")
+                    self.after(0, self.update_status, f"{label}yt-dlp error, trying next...", "#ef4444")
+                    continue
+
+            # ── Standard subprocess path ─────────────────────────
             try:
                 subprocess.run(downloader["check"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
             except (subprocess.CalledProcessError, FileNotFoundError):
