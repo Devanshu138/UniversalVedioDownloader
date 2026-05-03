@@ -30,3 +30,9 @@ Run the GUI app:
 python gui_downloader.py
 ```
 Paste a URL into the input field and hit "Download"!
+
+## Developer
+
+Developed by **Devanshu** 💻
+- **GitHub**: [@Devanshu138](https://github.com/Devanshu138)
+- **Instagram**: [Follow on Instagram 📸](https://instagram.com/devanshu138) *(Update the username here if your handle is different!)*
