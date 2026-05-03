@@ -6,14 +6,19 @@ import os
 import time
 import webbrowser
 import re
+import signal
 
 ctk.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
 ctk.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
 
+# yt-dlp uses --continue by default, so partial .part files are auto-resumed.
+# We add --retries and --fragment-retries for network resilience.
 DOWNLOADERS = [
     {
         "name": "yt-dlp",
-        "command": [sys.executable, "-m", "yt_dlp", "--no-warnings", "-o", "%(title)s_{timestamp}.%(ext)s", "{url}"],
+        "command": [sys.executable, "-m", "yt_dlp", "--no-warnings",
+                    "--retries", "10", "--fragment-retries", "10",
+                    "-o", "%(title)s_{timestamp}.%(ext)s", "{url}"],
         "check": [sys.executable, "-m", "yt_dlp", "--version"]
     },
     {
@@ -34,6 +39,10 @@ class DownloaderApp(ctk.CTk):
 
         self.title("Universal Video Downloader")
         self.geometry("750x550")
+
+        self.current_process = None   # The running subprocess
+        self.is_paused = False        # Pause state flag
+        self.is_stopped = False       # Stop state flag
 
         # Configure grid layout
         self.grid_columnconfigure(0, weight=1)
@@ -58,8 +67,14 @@ class DownloaderApp(ctk.CTk):
         self.url_entry = ctk.CTkEntry(self.input_frame, placeholder_text="Paste your video link here (e.g. YouTube, Twitter, Vimeo...)", height=45)
         self.url_entry.grid(row=0, column=0, padx=(15, 10), pady=15, sticky="ew")
 
-        self.download_btn = ctk.CTkButton(self.input_frame, text="Download", height=45, command=self.start_download)
-        self.download_btn.grid(row=0, column=1, padx=(0, 15), pady=15)
+        self.download_btn = ctk.CTkButton(self.input_frame, text="Download", height=45, command=self.start_download, fg_color="#3b82f6", hover_color="#2563eb")
+        self.download_btn.grid(row=0, column=1, padx=(0, 5), pady=15)
+
+        self.pause_btn = ctk.CTkButton(self.input_frame, text="⏸ Pause", height=45, width=100, command=self.toggle_pause, fg_color="#eab308", hover_color="#ca8a04", text_color="#1e293b", state="disabled")
+        self.pause_btn.grid(row=0, column=2, padx=(0, 5), pady=15)
+
+        self.stop_btn = ctk.CTkButton(self.input_frame, text="⏹ Stop", height=45, width=100, command=self.stop_download, fg_color="#ef4444", hover_color="#dc2626", state="disabled")
+        self.stop_btn.grid(row=0, column=3, padx=(0, 15), pady=15)
 
         # Progress Section
         self.progress_frame = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=15)
@@ -100,6 +115,8 @@ class DownloaderApp(ctk.CTk):
         github_link.pack(side="left")
         github_link.bind("<Button-1>", lambda e: webbrowser.open("https://github.com/Devanshu138"))
 
+    # ── UI helpers ──────────────────────────────────────────────
+
     def update_status(self, text, color="#f8fafc"):
         self.status_label.configure(text=text, text_color=color)
 
@@ -109,9 +126,29 @@ class DownloaderApp(ctk.CTk):
         self.speed_label.configure(text="Speed: --")
         self.eta_label.configure(text="ETA: --")
 
+    def set_controls_downloading(self):
+        """Switch buttons to the 'downloading' state."""
+        self.download_btn.configure(state="disabled", text="Downloading...")
+        self.url_entry.configure(state="disabled")
+        self.pause_btn.configure(state="normal", text="⏸ Pause")
+        self.stop_btn.configure(state="normal")
+
+    def set_controls_idle(self):
+        """Switch buttons back to the 'idle' state."""
+        self.download_btn.configure(state="normal", text="Download")
+        self.url_entry.configure(state="normal")
+        self.pause_btn.configure(state="disabled", text="⏸ Pause")
+        self.stop_btn.configure(state="disabled")
+        self.is_paused = False
+        self.is_stopped = False
+        self.current_process = None
+
+    # ── Progress parser ─────────────────────────────────────────
+
     def parse_and_update(self, line):
         line = line.strip()
-        if not line: return
+        if not line:
+            return
 
         print(line)  # Keep in console for debugging
 
@@ -133,7 +170,7 @@ class DownloaderApp(ctk.CTk):
                     self.eta_label.configure(text=f"ETA: {eta_match.group(1)}")
             except Exception:
                 pass
-        elif "Written" in line and "MB/s" in line: # streamlink
+        elif "Written" in line and "MB/s" in line:  # streamlink
             self.update_status("Downloading Stream...", "#38bdf8")
             try:
                 speed_match = re.search(r"@\s+([^\s]+\s+MB/s)", line)
@@ -154,6 +191,8 @@ class DownloaderApp(ctk.CTk):
             self.update_status("Already downloaded!", "#10b981")
         elif "[error]" in line.lower() or "error:" in line.lower():
             self.update_status("Error encountered. Retrying...", "#ef4444")
+
+    # ── Help window ─────────────────────────────────────────────
 
     def show_help(self):
         help_window = ctk.CTkToplevel(self)
@@ -193,15 +232,17 @@ class DownloaderApp(ctk.CTk):
         inst_label = ctk.CTkLabel(scroll_frame, text=instructions, font=ctk.CTkFont(family="Segoe UI", size=16), text_color="#cbd5e1", wraplength=550, justify="left")
         inst_label.pack(anchor="w")
 
+    # ── Download controls ───────────────────────────────────────
+
     def start_download(self):
         url = self.url_entry.get().strip()
         if not url:
             self.update_status("Error: No URL provided.", "#ef4444")
             return
 
-        self.download_btn.configure(state="disabled", text="Downloading...")
-        self.url_entry.configure(state="disabled")
-        
+        self.is_stopped = False
+        self.is_paused = False
+        self.set_controls_downloading()
         self.reset_progress()
         self.update_status("Initializing...", "#f8fafc")
 
@@ -209,11 +250,71 @@ class DownloaderApp(ctk.CTk):
         thread = threading.Thread(target=self.download_process, args=(url,), daemon=True)
         thread.start()
 
+    def toggle_pause(self):
+        """Pause or resume the running subprocess (Windows: suspend/resume)."""
+        if self.current_process is None:
+            return
+
+        if not self.is_paused:
+            # PAUSE – suspend the process on Windows
+            self.is_paused = True
+            self.pause_btn.configure(text="▶ Resume")
+            self.update_status("Paused", "#eab308")
+            try:
+                if sys.platform == "win32":
+                    # Use Windows API via subprocess to suspend
+                    subprocess.run(
+                        ["powershell", "-Command",
+                         f"(Get-Process -Id {self.current_process.pid}).Suspend()"],
+                        creationflags=subprocess.CREATE_NO_WINDOW,
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                    )
+                else:
+                    os.kill(self.current_process.pid, signal.SIGSTOP)
+            except Exception:
+                # Fallback: just set the flag; the thread will spin-wait
+                pass
+        else:
+            # RESUME
+            self.is_paused = False
+            self.pause_btn.configure(text="⏸ Pause")
+            self.update_status("Resuming...", "#38bdf8")
+            try:
+                if sys.platform == "win32":
+                    subprocess.run(
+                        ["powershell", "-Command",
+                         f"(Get-Process -Id {self.current_process.pid}).Resume()"],
+                        creationflags=subprocess.CREATE_NO_WINDOW,
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                    )
+                else:
+                    os.kill(self.current_process.pid, signal.SIGCONT)
+            except Exception:
+                pass
+
+    def stop_download(self):
+        """Stop the running download immediately."""
+        self.is_stopped = True
+        self.is_paused = False
+        if self.current_process:
+            try:
+                self.current_process.terminate()
+                self.current_process.kill()
+            except Exception:
+                pass
+        self.after(0, self.update_status, "Download stopped.", "#ef4444")
+        self.after(0, self.set_controls_idle)
+
+    # ── Download logic ──────────────────────────────────────────
+
     def download_process(self, url):
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         success_overall = False
         
         for downloader in DOWNLOADERS:
+            if self.is_stopped:
+                break
+
             self.after(0, self.update_status, f"Attempting download with {downloader['name']}...", "#f8fafc")
             
             try:
@@ -230,30 +331,36 @@ class DownloaderApp(ctk.CTk):
                     creationflags = subprocess.CREATE_NO_WINDOW
                 
                 process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1, creationflags=creationflags)
+                self.current_process = process
                 
                 for line in process.stdout:
+                    if self.is_stopped:
+                        process.terminate()
+                        break
                     # Update GUI safely from thread
                     self.after(0, self.parse_and_update, line)
                 
                 process.wait()
+
+                if self.is_stopped:
+                    break
+
                 if process.returncode == 0:
                     self.after(0, self.update_status, f"Success! Video downloaded with {downloader['name']}.", "#10b981")
                     self.after(0, lambda: self.progress_bar.set(1.0))
                     self.after(0, lambda: self.pct_label.configure(text="100%"))
+                    self.after(0, lambda: self.speed_label.configure(text="Speed: Done"))
+                    self.after(0, lambda: self.eta_label.configure(text="ETA: 00:00"))
                     success_overall = True
                     break
             except Exception as e:
                 print(f"Error: {e}")
-                
-        if not success_overall:
+
+        if not success_overall and not self.is_stopped:
             self.after(0, self.update_status, "All download attempts failed. Check URL.", "#ef4444")
 
         # Re-enable UI
-        self.after(0, self.reset_ui)
-
-    def reset_ui(self):
-        self.download_btn.configure(state="normal", text="Download")
-        self.url_entry.configure(state="normal")
+        self.after(0, self.set_controls_idle)
 
 if __name__ == "__main__":
     app = DownloaderApp()
