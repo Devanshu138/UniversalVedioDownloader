@@ -61,8 +61,13 @@ class DownloaderApp(ctk.CTk):
 
         # Terminal Output
         self.terminal_textbox = ctk.CTkTextbox(self, font=ctk.CTkFont(family="Consolas", size=13), text_color="#a7f3d0", fg_color="#020617")
-        self.terminal_textbox.grid(row=2, column=0, padx=20, pady=(10, 20), sticky="nsew")
+        self.terminal_textbox.grid(row=2, column=0, padx=20, pady=(10, 10), sticky="nsew")
         self.terminal_textbox.configure(state="disabled")
+
+        # Developer Details (Eye-catching)
+        dev_text = "✨ Developed by Devanshu | Instagram: @_devanshugautam ✨"
+        self.dev_label = ctk.CTkLabel(self, text=dev_text, font=ctk.CTkFont(family="Segoe Script", size=16, weight="bold"), text_color="#facc15")
+        self.dev_label.grid(row=3, column=0, pady=(0, 15))
 
     def log(self, text):
         self.terminal_textbox.configure(state="normal")
