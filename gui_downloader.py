@@ -1,4 +1,5 @@
 import customtkinter as ctk
+import tkinter as tk
 import subprocess
 import threading
 import sys
@@ -7,6 +8,7 @@ import time
 import webbrowser
 import re
 import psutil
+import math
 
 ctk.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
 ctk.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
@@ -38,82 +40,134 @@ class DownloaderApp(ctk.CTk):
         super().__init__()
 
         self.title("Universal Video Downloader")
-        self.geometry("750x550")
+        self.geometry("800x600")
+        self.minsize(750, 550)
 
         self.current_process = None   # The running subprocess
         self.is_paused = False        # Pause state flag
         self.is_stopped = False       # Stop state flag
+        self._gradient_offset = 0     # For animation
 
-        # Configure grid layout
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(2, weight=1)
+        # ── Animated gradient background ────────────────────────
+        self.bg_canvas = tk.Canvas(self, highlightthickness=0, bd=0)
+        self.bg_canvas.place(x=0, y=0, relwidth=1, relheight=1)
+        self._draw_gradient()
+        self.bg_canvas.bind("<Configure>", lambda e: self._draw_gradient())
+        self._animate_gradient()
+
+        # ── Main content frame (sits on top of gradient) ────────
+        self.content = ctk.CTkFrame(self, fg_color="transparent")
+        self.content.place(relx=0, rely=0, relwidth=1, relheight=1)
+        self.content.grid_columnconfigure(0, weight=1)
+        self.content.grid_rowconfigure(2, weight=1)
 
         # Header Frame
-        self.header_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.header_frame.grid(row=0, column=0, padx=20, pady=(20, 10), sticky="ew")
+        self.header_frame = ctk.CTkFrame(self.content, fg_color=("gray92", "#0f172a"), corner_radius=15)
+        self.header_frame.grid(row=0, column=0, padx=25, pady=(25, 10), sticky="ew")
         self.header_frame.grid_columnconfigure(0, weight=1)
 
-        self.header_label = ctk.CTkLabel(self.header_frame, text="Universal Video Downloader", font=ctk.CTkFont(size=26, weight="bold"))
-        self.header_label.grid(row=0, column=0, sticky="w")
+        self.header_label = ctk.CTkLabel(self.header_frame, text="⚡ Universal Video Downloader", font=ctk.CTkFont(size=28, weight="bold"), text_color=("gray10", "#e2e8f0"))
+        self.header_label.grid(row=0, column=0, sticky="w", padx=20, pady=15)
 
-        self.help_btn = ctk.CTkButton(self.header_frame, text="?", width=40, height=40, corner_radius=20, font=ctk.CTkFont(size=20, weight="bold"), command=self.show_help)
-        self.help_btn.grid(row=0, column=1, sticky="e")
+        self.help_btn = ctk.CTkButton(self.header_frame, text="?", width=40, height=40, corner_radius=20, font=ctk.CTkFont(size=20, weight="bold"), fg_color=("#6366f1", "#6366f1"), hover_color=("#4f46e5", "#4f46e5"), command=self.show_help)
+        self.help_btn.grid(row=0, column=1, sticky="e", padx=20, pady=15)
 
-        # Input Frame
-        self.input_frame = ctk.CTkFrame(self)
-        self.input_frame.grid(row=1, column=0, padx=20, pady=10, sticky="ew")
+        # Input Frame (glass panel)
+        self.input_frame = ctk.CTkFrame(self.content, fg_color=("gray92", "#0f172a"), corner_radius=15, border_width=1, border_color=("gray80", "#1e293b"))
+        self.input_frame.grid(row=1, column=0, padx=25, pady=10, sticky="ew")
         self.input_frame.grid_columnconfigure(0, weight=1)
 
-        self.url_entry = ctk.CTkEntry(self.input_frame, placeholder_text="Paste your video link here (e.g. YouTube, Twitter, Vimeo...)", height=45)
+        self.url_entry = ctk.CTkEntry(self.input_frame, placeholder_text="Paste your video link here (e.g. YouTube, Twitter, Vimeo...)", height=48, corner_radius=12, border_color=("#a5b4fc", "#334155"), font=ctk.CTkFont(size=14))
         self.url_entry.grid(row=0, column=0, padx=(15, 10), pady=15, sticky="ew")
 
-        self.download_btn = ctk.CTkButton(self.input_frame, text="Download", height=45, command=self.start_download, fg_color="#3b82f6", hover_color="#2563eb")
+        self.download_btn = ctk.CTkButton(self.input_frame, text="⬇ Download", height=48, corner_radius=12, command=self.start_download, fg_color="#6366f1", hover_color="#4f46e5", font=ctk.CTkFont(size=14, weight="bold"))
         self.download_btn.grid(row=0, column=1, padx=(0, 5), pady=15)
 
-        self.pause_btn = ctk.CTkButton(self.input_frame, text="⏸ Pause", height=45, width=100, command=self.toggle_pause, fg_color="#eab308", hover_color="#ca8a04", text_color="#1e293b", state="disabled")
+        self.pause_btn = ctk.CTkButton(self.input_frame, text="⏸ Pause", height=48, width=105, corner_radius=12, command=self.toggle_pause, fg_color="#eab308", hover_color="#ca8a04", text_color="#1e293b", font=ctk.CTkFont(size=13, weight="bold"), state="disabled")
         self.pause_btn.grid(row=0, column=2, padx=(0, 5), pady=15)
 
-        self.stop_btn = ctk.CTkButton(self.input_frame, text="⏹ Stop", height=45, width=100, command=self.stop_download, fg_color="#ef4444", hover_color="#dc2626", state="disabled")
+        self.stop_btn = ctk.CTkButton(self.input_frame, text="⏹ Stop", height=48, width=105, corner_radius=12, command=self.stop_download, fg_color="#ef4444", hover_color="#dc2626", font=ctk.CTkFont(size=13, weight="bold"), state="disabled")
         self.stop_btn.grid(row=0, column=3, padx=(0, 15), pady=15)
 
-        # Progress Section
-        self.progress_frame = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=15)
-        self.progress_frame.grid(row=2, column=0, padx=20, pady=(10, 10), sticky="nsew")
+        # Progress Section (glass panel)
+        self.progress_frame = ctk.CTkFrame(self.content, fg_color=("gray92", "#0f172a"), corner_radius=15, border_width=1, border_color=("gray80", "#1e293b"))
+        self.progress_frame.grid(row=2, column=0, padx=25, pady=(10, 10), sticky="nsew")
         
         self.progress_frame.grid_columnconfigure(0, weight=1)
         self.progress_frame.grid_columnconfigure(1, weight=1)
         self.progress_frame.grid_columnconfigure(2, weight=1)
         
-        self.status_label = ctk.CTkLabel(self.progress_frame, text="Ready to download", font=ctk.CTkFont(size=16, weight="bold"))
-        self.status_label.grid(row=0, column=0, columnspan=3, pady=(20, 10))
+        self.status_label = ctk.CTkLabel(self.progress_frame, text="Ready to download", font=ctk.CTkFont(size=18, weight="bold"), text_color=("gray10", "#e2e8f0"))
+        self.status_label.grid(row=0, column=0, columnspan=3, pady=(30, 10))
         
-        self.progress_bar = ctk.CTkProgressBar(self.progress_frame, height=20, corner_radius=10)
-        self.progress_bar.grid(row=1, column=0, columnspan=3, padx=40, pady=(10, 20), sticky="ew")
+        self.progress_bar = ctk.CTkProgressBar(self.progress_frame, height=22, corner_radius=11, progress_color="#6366f1", fg_color=("gray80", "#1e293b"))
+        self.progress_bar.grid(row=1, column=0, columnspan=3, padx=50, pady=(10, 25), sticky="ew")
         self.progress_bar.set(0)
         
-        self.pct_label = ctk.CTkLabel(self.progress_frame, text="0%", font=ctk.CTkFont(size=24, weight="bold"), text_color="#3b82f6")
-        self.pct_label.grid(row=2, column=0, pady=(0, 20))
+        self.pct_label = ctk.CTkLabel(self.progress_frame, text="0%", font=ctk.CTkFont(size=28, weight="bold"), text_color="#818cf8")
+        self.pct_label.grid(row=2, column=0, pady=(0, 25))
         
-        self.speed_label = ctk.CTkLabel(self.progress_frame, text="Speed: --", font=ctk.CTkFont(size=15), text_color="#94a3b8")
-        self.speed_label.grid(row=2, column=1, pady=(0, 20))
+        self.speed_label = ctk.CTkLabel(self.progress_frame, text="Speed: --", font=ctk.CTkFont(size=15), text_color=("gray40", "#94a3b8"))
+        self.speed_label.grid(row=2, column=1, pady=(0, 25))
         
-        self.eta_label = ctk.CTkLabel(self.progress_frame, text="ETA: --", font=ctk.CTkFont(size=15), text_color="#94a3b8")
-        self.eta_label.grid(row=2, column=2, pady=(0, 20))
+        self.eta_label = ctk.CTkLabel(self.progress_frame, text="ETA: --", font=ctk.CTkFont(size=15), text_color=("gray40", "#94a3b8"))
+        self.eta_label.grid(row=2, column=2, pady=(0, 25))
 
         # Developer Details (Professional & Clickable)
-        self.footer_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.footer_frame = ctk.CTkFrame(self.content, fg_color="transparent")
         self.footer_frame.grid(row=3, column=0, pady=(0, 15))
         
-        dev_label = ctk.CTkLabel(self.footer_frame, text="Developed by Devanshu | ", font=ctk.CTkFont(size=13), text_color="#94a3b8")
+        dev_label = ctk.CTkLabel(self.footer_frame, text="Developed by Devanshu  ·  ", font=ctk.CTkFont(size=13), text_color=("gray50", "#64748b"))
         dev_label.pack(side="left")
         
-        ig_link = ctk.CTkLabel(self.footer_frame, text="Instagram", font=ctk.CTkFont(size=13, underline=True), text_color="#38bdf8", cursor="hand2")
-        ig_link.pack(side="left", padx=(0, 5))
+        ig_link = ctk.CTkLabel(self.footer_frame, text="Instagram", font=ctk.CTkFont(size=13, underline=True), text_color=("purple", "#a78bfa"), cursor="hand2")
+        ig_link.pack(side="left", padx=(0, 8))
         ig_link.bind("<Button-1>", lambda e: webbrowser.open("https://instagram.com/_devanshugautam"))
         
-        github_link = ctk.CTkLabel(self.footer_frame, text="GitHub", font=ctk.CTkFont(size=13, underline=True), text_color="#38bdf8", cursor="hand2")
+        sep = ctk.CTkLabel(self.footer_frame, text="·", font=ctk.CTkFont(size=13), text_color=("gray50", "#64748b"))
+        sep.pack(side="left", padx=(0, 8))
+
+        github_link = ctk.CTkLabel(self.footer_frame, text="GitHub", font=ctk.CTkFont(size=13, underline=True), text_color=("purple", "#a78bfa"), cursor="hand2")
         github_link.pack(side="left")
         github_link.bind("<Button-1>", lambda e: webbrowser.open("https://github.com/Devanshu138"))
+
+    # ── Gradient background ─────────────────────────────────────
+
+    def _lerp_color(self, c1, c2, t):
+        """Linearly interpolate between two (r,g,b) tuples."""
+        return tuple(int(a + (b - a) * t) for a, b in zip(c1, c2))
+
+    def _draw_gradient(self):
+        """Draw a smooth vertical gradient on the background canvas."""
+        self.bg_canvas.delete("gradient")
+        w = self.winfo_width() or 800
+        h = self.winfo_height() or 600
+
+        o = self._gradient_offset
+        # Deep navy → indigo → dark purple (shifts with offset)
+        top    = self._lerp_color((10, 10, 35),  (25, 15, 50),  (0.5 + 0.5 * math.sin(o)))
+        mid    = self._lerp_color((15, 20, 55),  (40, 20, 70),  (0.5 + 0.5 * math.sin(o + 1.5)))
+        bottom = self._lerp_color((5,  8,  25),  (20, 10, 45),  (0.5 + 0.5 * math.sin(o + 3.0)))
+
+        steps = 80  # number of bands
+        half = steps // 2
+        for i in range(steps):
+            if i < half:
+                t = i / half
+                r, g, b = self._lerp_color(top, mid, t)
+            else:
+                t = (i - half) / half
+                r, g, b = self._lerp_color(mid, bottom, t)
+            color = f"#{r:02x}{g:02x}{b:02x}"
+            y0 = int(h * i / steps)
+            y1 = int(h * (i + 1) / steps) + 1
+            self.bg_canvas.create_rectangle(0, y0, w, y1, fill=color, outline=color, tags="gradient")
+
+    def _animate_gradient(self):
+        """Slowly shift the gradient colors over time."""
+        self._gradient_offset += 0.02
+        self._draw_gradient()
+        self.after(100, self._animate_gradient)  # ~10 FPS, very light
 
     # ── UI helpers ──────────────────────────────────────────────
 
