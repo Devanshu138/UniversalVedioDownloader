@@ -63,10 +63,13 @@ class DownloaderApp(ctk.CTk):
         self._resize_timer = None     # For debounced resize
 
         # Set base colors to match gradient (prevents black flash on resize)
-        self.configure(fg_color="#1e2032")
+        dark_bg = "#1e2032"
+        self.configure(fg_color=dark_bg)
+        self.tk.call("tk", "scaling", self.tk.call("tk", "scaling"))  # refresh
+        self["bg"] = dark_bg  # Raw tkinter bg
 
         # ── Animated gradient background ────────────────────────
-        self.bg_canvas = tk.Canvas(self, highlightthickness=0, bd=0, bg="#1e2032")
+        self.bg_canvas = tk.Canvas(self, highlightthickness=0, bd=0, bg=dark_bg)
         self.bg_canvas.place(x=0, y=0, relwidth=1, relheight=1)
         self._draw_gradient()
         self.bg_canvas.bind("<Configure>", self._on_resize)
@@ -75,6 +78,7 @@ class DownloaderApp(ctk.CTk):
         # ── Main content frame (sits on top of gradient) ────────
         self.content = ctk.CTkFrame(self, fg_color="transparent")
         self.content.place(relx=0, rely=0, relwidth=1, relheight=1)
+        self.content._canvas.configure(bg=dark_bg)  # Fix inner tk canvas bg
         self.content.grid_columnconfigure(0, weight=1)
         self.content.grid_rowconfigure(4, weight=1)
 
