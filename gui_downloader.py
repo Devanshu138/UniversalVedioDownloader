@@ -97,21 +97,21 @@ class DownloaderApp(ctk.CTk):
         # Options Row (Quality + Subtitles + Batch toggle)
         self.options_frame = ctk.CTkFrame(self.content, fg_color=("#EDF2F4", "#2B2D42"), corner_radius=15, border_width=1, border_color=("#8D99AE", "#3d3f5c"))
         self.options_frame.grid(row=2, column=0, padx=25, pady=(0, 10), sticky="ew")
-        self.options_frame.grid_columnconfigure(3, weight=1)
+        self.options_frame.grid_columnconfigure(4, weight=1)
 
         q_label = ctk.CTkLabel(self.options_frame, text="Quality:", font=ctk.CTkFont(size=13, weight="bold"), text_color=("#2B2D42", "#EDF2F4"))
         q_label.grid(row=0, column=0, padx=(15, 5), pady=12)
 
         self.quality_var = ctk.StringVar(value="Best")
         self.quality_menu = ctk.CTkComboBox(self.options_frame, variable=self.quality_var, values=["Best", "1080p", "720p", "480p", "Audio Only"], width=130, height=36, corner_radius=10, fg_color="#1a1b2e", button_color="#EF233C", button_hover_color="#D90429", border_color="#3d3f5c", dropdown_fg_color="#1a1b2e", dropdown_hover_color="#EF233C", font=ctk.CTkFont(size=13), state="readonly")
-        self.quality_menu.grid(row=0, column=1, padx=(0, 15), pady=12)
+        self.quality_menu.grid(row=0, column=1, padx=(0, 20), pady=12)
 
         s_label = ctk.CTkLabel(self.options_frame, text="Subtitles:", font=ctk.CTkFont(size=13, weight="bold"), text_color=("#2B2D42", "#EDF2F4"))
         s_label.grid(row=0, column=2, padx=(0, 5), pady=12)
 
         self.subs_var = ctk.StringVar(value="No Subtitles")
         self.subs_menu = ctk.CTkComboBox(self.options_frame, variable=self.subs_var, values=["No Subtitles", "English", "Hindi", "English + Hindi"], width=145, height=36, corner_radius=10, fg_color="#1a1b2e", button_color="#EF233C", button_hover_color="#D90429", border_color="#3d3f5c", dropdown_fg_color="#1a1b2e", dropdown_hover_color="#EF233C", font=ctk.CTkFont(size=13), state="readonly")
-        self.subs_menu.grid(row=0, column=3, padx=(0, 15), pady=12)
+        self.subs_menu.grid(row=0, column=3, padx=(0, 10), pady=12)
 
         self.batch_var = ctk.BooleanVar(value=False)
         self.batch_check = ctk.CTkCheckBox(self.options_frame, text="Batch Mode", variable=self.batch_var, font=ctk.CTkFont(size=13, weight="bold"), text_color=("#2B2D42", "#EDF2F4"), fg_color="#EF233C", hover_color="#D90429", corner_radius=6, command=self._toggle_batch)
