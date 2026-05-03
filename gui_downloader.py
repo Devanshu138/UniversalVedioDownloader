@@ -115,7 +115,7 @@ class DownloaderApp(ctk.CTk):
 
         self.batch_var = ctk.BooleanVar(value=False)
         self.batch_check = ctk.CTkCheckBox(self.options_frame, text="Batch Mode", variable=self.batch_var, font=ctk.CTkFont(size=13, weight="bold"), text_color=("#2B2D42", "#EDF2F4"), fg_color="#EF233C", hover_color="#D90429", corner_radius=6, command=self._toggle_batch)
-        self.batch_check.grid(row=0, column=4, padx=(0, 15), pady=12, sticky="w")
+        self.batch_check.grid(row=0, column=4, padx=(0, 15), pady=12, sticky="e")
 
         # Batch URL text area (hidden by default)
         self.batch_frame = ctk.CTkFrame(self.content, fg_color=("#EDF2F4", "#2B2D42"), corner_radius=15, border_width=1, border_color=("#8D99AE", "#3d3f5c"))
