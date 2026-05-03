@@ -1,0 +1,8 @@
+venv/
+__pycache__/
+*.pyc
+.env
+video.mp4
+downloaded_video.mp4
+*.part
+*.ytdl
