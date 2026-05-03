@@ -122,8 +122,10 @@ class DownloaderApp(ctk.CTk):
         self.subs_menu.grid(row=0, column=3, padx=(0, 10), pady=12)
 
         self.batch_var = ctk.BooleanVar(value=False)
-        self.batch_check = ctk.CTkSwitch(self.options_frame, text="Batch Mode", variable=self.batch_var, font=ctk.CTkFont(size=13, weight="bold"), text_color=("#2B2D42", "#EDF2F4"), fg_color="#3d3f5c", progress_color="#EF233C", button_color="#EDF2F4", button_hover_color="#D90429", command=self._toggle_batch)
-        self.batch_check.grid(row=0, column=4, padx=(0, 15), pady=12, sticky="e")
+        batch_label = ctk.CTkLabel(self.options_frame, text="Batch Mode:", font=ctk.CTkFont(size=13, weight="bold"), text_color=("#2B2D42", "#EDF2F4"))
+        batch_label.grid(row=0, column=4, padx=(0, 5), pady=12, sticky="e")
+        self.batch_check = ctk.CTkSwitch(self.options_frame, text="", variable=self.batch_var, width=46, fg_color="#3d3f5c", progress_color="#EF233C", button_color="#EDF2F4", button_hover_color="#D90429", command=self._toggle_batch)
+        self.batch_check.grid(row=0, column=5, padx=(0, 15), pady=12, sticky="w")
 
         # Batch URL text area (hidden by default)
         self.batch_frame = ctk.CTkFrame(self.content, fg_color=("#EDF2F4", "#2B2D42"), corner_radius=15, border_width=1, border_color=("#8D99AE", "#3d3f5c"))
