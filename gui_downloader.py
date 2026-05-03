@@ -44,9 +44,17 @@ class DownloaderApp(ctk.CTk):
         self.minsize(800, 600)
 
         # Set window icon
-        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.ico")
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        icon_path = os.path.join(base_dir, "app.ico")
         if os.path.exists(icon_path):
             self.iconbitmap(icon_path)
+        # Also set PNG for taskbar (higher quality)
+        png_path = os.path.join(base_dir, "app_icon.png")
+        if os.path.exists(png_path):
+            from PIL import Image, ImageTk
+            icon_img = ImageTk.PhotoImage(Image.open(png_path))
+            self.iconphoto(True, icon_img)
+            self._icon_ref = icon_img  # Keep reference to prevent GC
 
         self.current_process = None   # The running subprocess
         self.is_paused = False        # Pause state flag
