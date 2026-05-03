@@ -83,7 +83,7 @@ class DownloaderApp(ctk.CTk):
         self.download_btn = ctk.CTkButton(self.input_frame, text="⬇ Download", height=48, corner_radius=12, command=self.start_download, fg_color="#EF233C", hover_color="#D90429", font=ctk.CTkFont(size=14, weight="bold"))
         self.download_btn.grid(row=0, column=1, padx=(0, 5), pady=15)
 
-        self.pause_btn = ctk.CTkButton(self.input_frame, text="⏸ Pause", height=48, width=105, corner_radius=12, command=self.toggle_pause, fg_color="#8D99AE", hover_color="#6b7a8e", text_color="#2B2D42", font=ctk.CTkFont(size=13, weight="bold"), state="disabled")
+        self.pause_btn = ctk.CTkButton(self.input_frame, text="⏸ Pause", height=48, width=105, corner_radius=12, command=self.toggle_pause, fg_color="#f59e0b", hover_color="#d97706", text_color="#ffffff", font=ctk.CTkFont(size=13, weight="bold"), state="disabled")
         self.pause_btn.grid(row=0, column=2, padx=(0, 5), pady=15)
 
         self.stop_btn = ctk.CTkButton(self.input_frame, text="⏹ Stop", height=48, width=105, corner_radius=12, command=self.stop_download, fg_color="#D90429", hover_color="#a80320", font=ctk.CTkFont(size=13, weight="bold"), state="disabled")
@@ -100,11 +100,11 @@ class DownloaderApp(ctk.CTk):
         self.status_label = ctk.CTkLabel(self.progress_frame, text="Ready to download", font=ctk.CTkFont(size=18, weight="bold"), text_color=("#2B2D42", "#EDF2F4"))
         self.status_label.grid(row=0, column=0, columnspan=3, pady=(30, 10))
         
-        self.progress_bar = ctk.CTkProgressBar(self.progress_frame, height=22, corner_radius=11, progress_color="#EF233C", fg_color=("#c8cdd4", "#1a1b2e"))
+        self.progress_bar = ctk.CTkProgressBar(self.progress_frame, height=22, corner_radius=11, progress_color="#22c55e", fg_color=("#c8cdd4", "#1a1b2e"))
         self.progress_bar.grid(row=1, column=0, columnspan=3, padx=50, pady=(10, 25), sticky="ew")
         self.progress_bar.set(0)
         
-        self.pct_label = ctk.CTkLabel(self.progress_frame, text="0%", font=ctk.CTkFont(size=28, weight="bold"), text_color="#EF233C")
+        self.pct_label = ctk.CTkLabel(self.progress_frame, text="0%", font=ctk.CTkFont(size=28, weight="bold"), text_color="#22c55e")
         self.pct_label.grid(row=2, column=0, pady=(0, 25))
         
         self.speed_label = ctk.CTkLabel(self.progress_frame, text="Speed: --", font=ctk.CTkFont(size=15), text_color=("#5a6070", "#8D99AE"))
