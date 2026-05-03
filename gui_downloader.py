@@ -5,6 +5,7 @@ import sys
 import os
 import time
 import webbrowser
+import re
 
 ctk.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
 ctk.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
@@ -60,10 +61,29 @@ class DownloaderApp(ctk.CTk):
         self.download_btn = ctk.CTkButton(self.input_frame, text="Download", height=45, command=self.start_download)
         self.download_btn.grid(row=0, column=1, padx=(0, 15), pady=15)
 
-        # Terminal Output
-        self.terminal_textbox = ctk.CTkTextbox(self, font=ctk.CTkFont(family="Consolas", size=13), text_color="#a7f3d0", fg_color="#020617")
-        self.terminal_textbox.grid(row=2, column=0, padx=20, pady=(10, 10), sticky="nsew")
-        self.terminal_textbox.configure(state="disabled")
+        # Progress Section
+        self.progress_frame = ctk.CTkFrame(self, fg_color="#1e293b", corner_radius=15)
+        self.progress_frame.grid(row=2, column=0, padx=20, pady=(10, 10), sticky="nsew")
+        
+        self.progress_frame.grid_columnconfigure(0, weight=1)
+        self.progress_frame.grid_columnconfigure(1, weight=1)
+        self.progress_frame.grid_columnconfigure(2, weight=1)
+        
+        self.status_label = ctk.CTkLabel(self.progress_frame, text="Ready to download", font=ctk.CTkFont(size=16, weight="bold"))
+        self.status_label.grid(row=0, column=0, columnspan=3, pady=(20, 10))
+        
+        self.progress_bar = ctk.CTkProgressBar(self.progress_frame, height=20, corner_radius=10)
+        self.progress_bar.grid(row=1, column=0, columnspan=3, padx=40, pady=(10, 20), sticky="ew")
+        self.progress_bar.set(0)
+        
+        self.pct_label = ctk.CTkLabel(self.progress_frame, text="0%", font=ctk.CTkFont(size=24, weight="bold"), text_color="#3b82f6")
+        self.pct_label.grid(row=2, column=0, pady=(0, 20))
+        
+        self.speed_label = ctk.CTkLabel(self.progress_frame, text="Speed: --", font=ctk.CTkFont(size=15), text_color="#94a3b8")
+        self.speed_label.grid(row=2, column=1, pady=(0, 20))
+        
+        self.eta_label = ctk.CTkLabel(self.progress_frame, text="ETA: --", font=ctk.CTkFont(size=15), text_color="#94a3b8")
+        self.eta_label.grid(row=2, column=2, pady=(0, 20))
 
         # Developer Details (Professional & Clickable)
         self.footer_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -80,11 +100,60 @@ class DownloaderApp(ctk.CTk):
         github_link.pack(side="left")
         github_link.bind("<Button-1>", lambda e: webbrowser.open("https://github.com/Devanshu138"))
 
-    def log(self, text):
-        self.terminal_textbox.configure(state="normal")
-        self.terminal_textbox.insert("end", text + "\n")
-        self.terminal_textbox.see("end")
-        self.terminal_textbox.configure(state="disabled")
+    def update_status(self, text, color="#f8fafc"):
+        self.status_label.configure(text=text, text_color=color)
+
+    def reset_progress(self):
+        self.progress_bar.set(0)
+        self.pct_label.configure(text="0%")
+        self.speed_label.configure(text="Speed: --")
+        self.eta_label.configure(text="ETA: --")
+
+    def parse_and_update(self, line):
+        line = line.strip()
+        if not line: return
+
+        print(line)  # Keep in console for debugging
+
+        if "[download]" in line and "%" in line and "ETA" in line:
+            self.update_status("Downloading...", "#38bdf8")
+            try:
+                pct_match = re.search(r"([\d\.]+)%", line)
+                if pct_match:
+                    pct = float(pct_match.group(1))
+                    self.progress_bar.set(pct / 100.0)
+                    self.pct_label.configure(text=f"{pct}%")
+                
+                speed_match = re.search(r"at\s+([^\s]+)", line)
+                if speed_match:
+                    self.speed_label.configure(text=f"Speed: {speed_match.group(1)}")
+                    
+                eta_match = re.search(r"ETA\s+([\d:]+)", line)
+                if eta_match:
+                    self.eta_label.configure(text=f"ETA: {eta_match.group(1)}")
+            except Exception:
+                pass
+        elif "Written" in line and "MB/s" in line: # streamlink
+            self.update_status("Downloading Stream...", "#38bdf8")
+            try:
+                speed_match = re.search(r"@\s+([^\s]+\s+MB/s)", line)
+                if speed_match:
+                    self.speed_label.configure(text=f"Speed: {speed_match.group(1)}")
+                current_val = self.progress_bar.get()
+                self.progress_bar.set((current_val + 0.05) % 1.0)
+                self.pct_label.configure(text="--%")
+            except Exception:
+                pass
+        elif "Destination:" in line:
+            self.update_status("Starting download...", "#f8fafc")
+        elif "Merging formats into" in line or "Extracting" in line:
+            self.update_status("Processing video (Merging/Extracting)...", "#eab308")
+        elif "has already been downloaded" in line:
+            self.progress_bar.set(1.0)
+            self.pct_label.configure(text="100%")
+            self.update_status("Already downloaded!", "#10b981")
+        elif "[error]" in line.lower() or "error:" in line.lower():
+            self.update_status("Error encountered. Retrying...", "#ef4444")
 
     def show_help(self):
         help_window = ctk.CTkToplevel(self)
@@ -127,35 +196,29 @@ class DownloaderApp(ctk.CTk):
     def start_download(self):
         url = self.url_entry.get().strip()
         if not url:
-            self.log("[-] Error: No URL provided.")
+            self.update_status("Error: No URL provided.", "#ef4444")
             return
 
         self.download_btn.configure(state="disabled", text="Downloading...")
         self.url_entry.configure(state="disabled")
         
-        self.terminal_textbox.configure(state="normal")
-        self.terminal_textbox.delete("0.0", "end")
-        self.terminal_textbox.configure(state="disabled")
+        self.reset_progress()
+        self.update_status("Initializing...", "#f8fafc")
 
         # Run in a background thread to prevent freezing the GUI
         thread = threading.Thread(target=self.download_process, args=(url,), daemon=True)
         thread.start()
 
     def download_process(self, url):
-        self.log(f"[*] Starting universal video downloader for: {url}\n")
-        
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         success_overall = False
         
         for downloader in DOWNLOADERS:
-            self.log("==============================================")
-            self.log(f"[*] Attempting download with {downloader['name']}...")
-            self.log("==============================================\n")
+            self.after(0, self.update_status, f"Attempting download with {downloader['name']}...", "#f8fafc")
             
             try:
                 subprocess.run(downloader["check"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
             except (subprocess.CalledProcessError, FileNotFoundError):
-                self.log(f"[-] {downloader['name']} is not installed. Skipping.\n")
                 continue
 
             cmd = [arg.replace("{url}", url).replace("{timestamp}", timestamp) for arg in downloader["command"]]
@@ -170,22 +233,20 @@ class DownloaderApp(ctk.CTk):
                 
                 for line in process.stdout:
                     # Update GUI safely from thread
-                    self.after(0, self.log, line.strip())
+                    self.after(0, self.parse_and_update, line)
                 
                 process.wait()
                 if process.returncode == 0:
-                    self.log(f"\n[+] Success! {downloader['name']} successfully downloaded the video.")
-                    self.log("[*] Download complete! Exiting script.\n")
+                    self.after(0, self.update_status, f"Success! Video downloaded with {downloader['name']}.", "#10b981")
+                    self.after(0, lambda: self.progress_bar.set(1.0))
+                    self.after(0, lambda: self.pct_label.configure(text="100%"))
                     success_overall = True
                     break
-                else:
-                    self.log(f"\n[-] {downloader['name']} could not download the video.\n")
             except Exception as e:
-                self.log(f"\n[-] Error running {downloader['name']}: {e}\n")
+                print(f"Error: {e}")
                 
         if not success_overall:
-            self.log("[-] All download attempts failed.")
-            self.log("[*] Make sure the URL is accessible.")
+            self.after(0, self.update_status, "All download attempts failed. Check URL.", "#ef4444")
 
         # Re-enable UI
         self.after(0, self.reset_ui)
