@@ -2,6 +2,12 @@
 
 A python-based desktop GUI application that can download videos from almost any platform using multiple fallback methods (`yt-dlp`, `you-get`, `streamlink`).
 
+## Developer
+
+Developed by **Devanshu** 💻
+- **GitHub**: [@Devanshu138](https://github.com/Devanshu138)
+- **Instagram**: [Follow on Instagram 📸](https://instagram.com/devanshu138) 
+
 ## Features
 - **Sleek Modern GUI**: Built with `customtkinter` for a dark-mode, premium look.
 - **Multiple Engines**: Automatically falls back to alternative downloaders if one fails.
@@ -31,8 +37,4 @@ python gui_downloader.py
 ```
 Paste a URL into the input field and hit "Download"!
 
-## Developer
 
-Developed by **Devanshu** 💻
-- **GitHub**: [@Devanshu138](https://github.com/Devanshu138)
-- **Instagram**: [Follow on Instagram 📸](https://instagram.com/devanshu138) *(Update the username here if your handle is different!)*
