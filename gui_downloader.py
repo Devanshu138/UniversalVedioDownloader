@@ -164,7 +164,7 @@ class DownloaderApp(ctk.CTk):
         
         ig_link = ctk.CTkLabel(self.footer_frame, text="Instagram", font=ctk.CTkFont(size=13, underline=True), text_color=("#D90429", "#EF233C"), cursor="hand2")
         ig_link.pack(side="left", padx=(0, 8))
-        ig_link.bind("<Button-1>", lambda e: self._open_url("https://www.instagram.com/_devanshugautam/"))
+        ig_link.bind("<Button-1>", lambda e: self._open_instagram())
         
         sep = ctk.CTkLabel(self.footer_frame, text="·", font=ctk.CTkFont(size=13), text_color=("#5a6070", "#8D99AE"))
         sep.pack(side="left", padx=(0, 8))
@@ -186,6 +186,37 @@ class DownloaderApp(ctk.CTk):
                 webbrowser.open(url, new=2)
         except Exception:
             webbrowser.open(url, new=2)
+
+    def _open_instagram(self):
+        """Open Instagram with fallback copy-link popup."""
+        ig_url = "https://www.instagram.com/_devanshugautam/"
+        self._open_url(ig_url)
+
+        # Show small toast with copy option
+        toast = ctk.CTkToplevel(self)
+        toast.title("Instagram")
+        toast.geometry("340x130")
+        toast.resizable(False, False)
+        toast.grab_set()
+        toast.attributes("-topmost", True)
+
+        # Center on screen
+        toast.update_idletasks()
+        x = (toast.winfo_screenwidth() - 340) // 2
+        y = (toast.winfo_screenheight() - 130) // 2
+        toast.geometry(f"340x130+{x}+{y}")
+
+        ctk.CTkLabel(toast, text="📸  @_devanshugautam", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(15, 5))
+        ctk.CTkLabel(toast, text="If Instagram asks to log in, search the handle above.", font=ctk.CTkFont(size=12), text_color="#8D99AE").pack()
+
+        def copy_handle():
+            self.clipboard_clear()
+            self.clipboard_append("_devanshugautam")
+            copy_btn.configure(text="✅ Copied!")
+            toast.after(1200, toast.destroy)
+
+        copy_btn = ctk.CTkButton(toast, text="📋 Copy Handle", command=copy_handle, fg_color="#EF233C", hover_color="#D90429", height=32, corner_radius=8)
+        copy_btn.pack(pady=(8, 0))
 
     def _toggle_batch(self):
         """Show/hide batch URL text area."""
