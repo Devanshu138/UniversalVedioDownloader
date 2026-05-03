@@ -6,3 +6,12 @@ video.mp4
 downloaded_video.mp4
 *.part
 *.ytdl
+
+# Build artifacts
+dist/
+build/
+installer_output/
+*.spec
+installer.iss
+YouTube Videos/
+Others/
