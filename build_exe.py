@@ -20,11 +20,11 @@ import textwrap
 
 # ── Config ───────────────────────────────────────────────────
 APP_NAME = "Universal Video Downloader"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.3.8"
 APP_PUBLISHER = "Devanshu"
 APP_URL = "https://github.com/Devanshu138/UniversalVedioDownloader"
 MAIN_SCRIPT = "gui_downloader.py"
-ICON_FILE = None  # Set to "app.ico" if you have an icon file
+ICON_FILE = "app.ico"  # App icon for EXE and installer
 EXE_NAME = "UniversalVideoDownloader"
 
 # Inno Setup compiler paths (tries both)
@@ -63,6 +63,7 @@ def step_pyinstaller():
 
     if ICON_FILE and os.path.exists(ICON_FILE):
         cmd += ["--icon", ICON_FILE]
+        cmd += ["--add-data", f"{ICON_FILE};."]
 
     # Include hidden imports for download engines
     for mod in ["yt_dlp", "you_get", "streamlink", "customtkinter", "psutil"]:

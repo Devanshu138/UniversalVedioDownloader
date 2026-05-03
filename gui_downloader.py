@@ -43,6 +43,11 @@ class DownloaderApp(ctk.CTk):
         self.geometry("800x600")
         self.minsize(750, 550)
 
+        # Set window icon
+        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app.ico")
+        if os.path.exists(icon_path):
+            self.iconbitmap(icon_path)
+
         self.current_process = None   # The running subprocess
         self.is_paused = False        # Pause state flag
         self.is_stopped = False       # Stop state flag
