@@ -4,6 +4,7 @@ import threading
 import sys
 import os
 import time
+import webbrowser
 
 ctk.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
 ctk.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
@@ -64,10 +65,20 @@ class DownloaderApp(ctk.CTk):
         self.terminal_textbox.grid(row=2, column=0, padx=20, pady=(10, 10), sticky="nsew")
         self.terminal_textbox.configure(state="disabled")
 
-        # Developer Details (Eye-catching)
-        dev_text = "✨ Developed by Devanshu | Instagram: @_devanshugautam ✨"
-        self.dev_label = ctk.CTkLabel(self, text=dev_text, font=ctk.CTkFont(family="Segoe Script", size=16, weight="bold"), text_color="#facc15")
-        self.dev_label.grid(row=3, column=0, pady=(0, 15))
+        # Developer Details (Professional & Clickable)
+        self.footer_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.footer_frame.grid(row=3, column=0, pady=(0, 15))
+        
+        dev_label = ctk.CTkLabel(self.footer_frame, text="Developed by Devanshu | ", font=ctk.CTkFont(size=13), text_color="#94a3b8")
+        dev_label.pack(side="left")
+        
+        ig_link = ctk.CTkLabel(self.footer_frame, text="Instagram", font=ctk.CTkFont(size=13, underline=True), text_color="#38bdf8", cursor="hand2")
+        ig_link.pack(side="left", padx=(0, 5))
+        ig_link.bind("<Button-1>", lambda e: webbrowser.open("https://instagram.com/_devanshugautam"))
+        
+        github_link = ctk.CTkLabel(self.footer_frame, text="GitHub", font=ctk.CTkFont(size=13, underline=True), text_color="#38bdf8", cursor="hand2")
+        github_link.pack(side="left")
+        github_link.bind("<Button-1>", lambda e: webbrowser.open("https://github.com/Devanshu138"))
 
     def log(self, text):
         self.terminal_textbox.configure(state="normal")
